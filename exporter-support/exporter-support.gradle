@@ -1,5 +1,17 @@
+plugins {
+  id 'maven-publish'
+}
+
 apply from: "${rootDir}/gradle/java.gradle"
 
 dependencies {
   compileOnly deps.opentelemetrySdk
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
 }

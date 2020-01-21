@@ -13,6 +13,19 @@ byteBuddy {
 
 apply from: "${rootDir}/gradle/java.gradle"
 
+if (!project.name.endsWith('-testing')) {
+  apply plugin: 'maven-publish'
+  publishing {
+    publications {
+      mavenJava(MavenPublication) {
+        from components.java
+        groupId = 'io.opentelemetry.auto.instrumentation'
+        artifactId = "instrumentation-$project.name"
+      }
+    }
+  }
+}
+
 afterEvaluate {
   byteBuddy {
     transformation {

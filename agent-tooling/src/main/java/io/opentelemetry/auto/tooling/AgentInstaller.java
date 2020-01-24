@@ -26,6 +26,8 @@ import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.tooling.context.FieldBackedProvider;
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,7 +52,16 @@ public class AgentInstaller {
     return INSTRUMENTATION;
   }
 
-  public static void installBytebuddyAgent(final Instrumentation inst) {
+  public static void installBytebuddyAgent(final Instrumentation inst, final URL bootstrapURL) {
+    try {
+      final Class<?> clazz = Class.forName("io.opentelemetry.auto.tooling.BeforeAgentInstaller");
+      final Method method =
+          clazz.getMethod(
+              "beforeInstallBytebuddyAgent", new Class[] {Instrumentation.class, URL.class});
+      method.invoke(null, inst, bootstrapURL);
+    } catch (final Exception e) {
+      log.debug(e.getMessage(), e);
+    }
     if (Config.get().isTraceEnabled()) {
       installBytebuddyAgent(inst, false, new AgentBuilder.Listener[0]);
     } else {

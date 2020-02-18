@@ -213,14 +213,14 @@ public class AgentCachingPoolStrategy implements PoolStrategy {
 
     @Override
     public TypePool.Resolution find(final String className) {
+      if (OBJECT_NAME.equals(className)) {
+        return OBJECT_RESOLUTION;
+      }
+
       final TypePool.Resolution existingResolution =
           sharedResolutionCache.getIfPresent(new TypeCacheKey(loaderHash, loaderRef, className));
       if (existingResolution != null) {
         return existingResolution;
-      }
-
-      if (OBJECT_NAME.equals(className)) {
-        return OBJECT_RESOLUTION;
       }
 
       return null;

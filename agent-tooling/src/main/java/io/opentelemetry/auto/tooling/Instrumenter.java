@@ -7,9 +7,6 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.not;
 
 import io.opentelemetry.auto.config.Config;
-import io.opentelemetry.auto.tooling.context.FieldBackedProvider;
-import io.opentelemetry.auto.tooling.context.InstrumentationContextProvider;
-import io.opentelemetry.auto.tooling.context.NoopContextProvider;
 import io.opentelemetry.auto.tooling.muzzle.Reference;
 import io.opentelemetry.auto.tooling.muzzle.ReferenceMatcher;
 import java.security.ProtectionDomain;
@@ -45,7 +42,7 @@ public interface Instrumenter {
   abstract class Default implements Instrumenter {
     private final SortedSet<String> instrumentationNames;
     private final String instrumentationPrimaryName;
-    private final InstrumentationContextProvider contextProvider;
+    // private final InstrumentationContextProvider contextProvider;
     protected final boolean enabled;
 
     protected final String packageName =
@@ -57,11 +54,11 @@ public interface Instrumenter {
       instrumentationPrimaryName = instrumentationName;
 
       enabled = Config.get().isIntegrationEnabled(instrumentationNames, defaultEnabled());
-      if (contextStore().size() > 0) {
-        contextProvider = new FieldBackedProvider(this);
-      } else {
-        contextProvider = NoopContextProvider.INSTANCE;
-      }
+      // if (contextStore().size() > 0) {
+      //   contextProvider = new FieldBackedProvider(this);
+      // } else {
+      //   contextProvider = NoopContextProvider.INSTANCE;
+      // }
     }
 
     @Override
@@ -88,9 +85,9 @@ public interface Instrumenter {
               .and(new PostMatchHook())
               .transform(AgentTransformers.defaultTransformers());
       agentBuilder = injectHelperClasses(agentBuilder);
-      agentBuilder = contextProvider.instrumentationTransformer(agentBuilder);
+      // agentBuilder = contextProvider.instrumentationTransformer(agentBuilder);
       agentBuilder = applyInstrumentationTransformers(agentBuilder);
-      agentBuilder = contextProvider.additionalInstrumentation(agentBuilder);
+      // agentBuilder = contextProvider.additionalInstrumentation(agentBuilder);
       return agentBuilder;
     }
 

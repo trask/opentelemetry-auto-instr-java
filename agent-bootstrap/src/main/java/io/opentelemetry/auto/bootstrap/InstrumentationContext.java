@@ -1,7 +1,12 @@
 package io.opentelemetry.auto.bootstrap;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 /** Instrumentation Context API */
 public class InstrumentationContext {
+  private static final ConcurrentMap<Class<?>, ContextStore> outerMap = new ConcurrentHashMap();
+
   private InstrumentationContext() {}
 
   /**
@@ -21,7 +26,45 @@ public class InstrumentationContext {
    */
   public static <K, C> ContextStore<K, C> get(
       final Class<K> keyClass, final Class<C> contextClass) {
-    throw new RuntimeException(
-        "Calls to this method will be rewritten by Instrumentation Context Provider (e.g. FieldBackedProvider)");
+    ContextStore contextStore = outerMap.get(keyClass);
+    if (contextStore != null) {
+      return contextStore;
+    }
+    contextStore = new ContextStoreImpl();
+    final ContextStore previousMap = outerMap.putIfAbsent(keyClass, contextStore);
+    if (previousMap == null) {
+      return contextStore;
+    } else {
+      return previousMap;
+    }
+  }
+
+  private static class ContextStoreImpl implements ContextStore {
+
+    private final ConcurrentMap<Object, Object> map = new ConcurrentHashMap<>();
+
+    @Override
+    public Object get(final Object key) {
+      return map.get(key);
+    }
+
+    @Override
+    public void put(final Object key, final Object context) {
+      map.put(key, context);
+    }
+
+    @Override
+    public Object putIfAbsent(final Object key, final Object context) {
+      return map.putIfAbsent(key, context);
+    }
+
+    @Override
+    public Object putIfAbsent(final Object key, final Factory contextFactory) {
+      final Object value = map.get(key);
+      if (value != null) {
+        return value;
+      }
+      return map.putIfAbsent(key, contextFactory.create());
+    }
   }
 }

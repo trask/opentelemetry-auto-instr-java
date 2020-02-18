@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 public class AgentBootstrap {
 
   public static void premain(final String agentArgs, final Instrumentation inst) {
+    StartupProfiler.startIfConfigured();
     agentmain(agentArgs, inst);
   }
 

@@ -68,6 +68,21 @@ public class AgentInstaller {
       Thread.currentThread().setContextClassLoader(savedContextClassLoader);
     }
 
+    final String savedPropertyValue = System.getProperty(TypeDefinition.RAW_TYPES_PROPERTY);
+    try {
+      System.setProperty(TypeDefinition.RAW_TYPES_PROPERTY, "true");
+      final boolean rawTypes = TypeDescription.AbstractBase.RAW_TYPES;
+      if (!rawTypes) {
+        log.error("too late to enable {}", TypeDefinition.RAW_TYPES_PROPERTY);
+      }
+    } finally {
+      if (savedPropertyValue == null) {
+        System.clearProperty(TypeDefinition.RAW_TYPES_PROPERTY);
+      } else {
+        System.setProperty(TypeDefinition.RAW_TYPES_PROPERTY, savedPropertyValue);
+      }
+    }
+
     INSTRUMENTATION = inst;
 
     addByteBuddyRawSetting();

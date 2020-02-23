@@ -234,7 +234,7 @@ class ConfigTest extends AgentSpecification {
     System.setProperty("ota.negative.test", "-1")
 
     expect:
-    Config.getFloatSettingFromEnvironment(name, defaultValue) == (float) expected
+    Config.get().getFloatSettingFromEnvironment(name, defaultValue) == (float) expected
 
     where:
     name              | expected

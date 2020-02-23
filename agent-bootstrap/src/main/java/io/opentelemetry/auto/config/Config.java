@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -81,6 +82,7 @@ public class Config {
 
   public static final String MICROMETER_STEP_MILLIS = "micrometer.step.millis";
 
+  private static final String DEFAULT_SERVICE_NAME = "(unknown)";
   private static final boolean DEFAULT_TRACE_ENABLED = true;
   public static final boolean DEFAULT_INTEGRATIONS_ENABLED = true;
 
@@ -152,15 +154,19 @@ public class Config {
   @Getter private final List<String> traceExecutors;
 
   // Values from an optionally provided properties file
-  private static Properties propertiesFromConfigFile;
+  private final Properties propertiesFromConfigFile;
+
+  private final boolean lookAtEnvironment;
 
   // Read order: System Properties -> Env Variables, [-> properties file], [-> default value]
   // Visible for testing
   Config() {
+    lookAtEnvironment = true;
+
     propertiesFromConfigFile = loadConfigurationFile();
 
     exporterJar = getSettingFromEnvironment(EXPORTER_JAR, null);
-    serviceName = getSettingFromEnvironment(SERVICE, "(unknown)");
+    serviceName = getSettingFromEnvironment(SERVICE, DEFAULT_SERVICE_NAME);
     traceEnabled = getBooleanSettingFromEnvironment(TRACE_ENABLED, DEFAULT_TRACE_ENABLED);
     integrationsEnabled =
         getBooleanSettingFromEnvironment(INTEGRATIONS_ENABLED, DEFAULT_INTEGRATIONS_ENABLED);
@@ -224,36 +230,40 @@ public class Config {
     log.debug("New instance: {}", this);
   }
 
-  // Read order: Properties -> Parent
-  private Config(final Properties properties, final Config parent) {
-    exporterJar = properties.getProperty(EXPORTER_JAR, parent.exporterJar);
-    serviceName = properties.getProperty(SERVICE, parent.serviceName);
+  // Read order: Properties -> Default
+  private Config(final Properties properties) {
+    lookAtEnvironment = false;
 
-    traceEnabled = getPropertyBooleanValue(properties, TRACE_ENABLED, parent.traceEnabled);
+    propertiesFromConfigFile = properties;
+
+    exporterJar = properties.getProperty(EXPORTER_JAR, null);
+    serviceName = properties.getProperty(SERVICE, DEFAULT_SERVICE_NAME);
+
+    traceEnabled = getPropertyBooleanValue(properties, TRACE_ENABLED, DEFAULT_TRACE_ENABLED);
     integrationsEnabled =
-        getPropertyBooleanValue(properties, INTEGRATIONS_ENABLED, parent.integrationsEnabled);
+        getPropertyBooleanValue(properties, INTEGRATIONS_ENABLED, DEFAULT_INTEGRATIONS_ENABLED);
 
     excludedClasses =
-        getPropertyListValue(properties, TRACE_CLASSES_EXCLUDE, parent.excludedClasses);
+        getPropertyListValue(properties, TRACE_CLASSES_EXCLUDE, Collections.<String>emptyList());
 
     httpServerErrorStatuses =
         getPropertyIntegerRangeValue(
-            properties, HTTP_SERVER_ERROR_STATUSES, parent.httpServerErrorStatuses);
+            properties, HTTP_SERVER_ERROR_STATUSES, DEFAULT_HTTP_SERVER_ERROR_STATUSES);
 
     httpClientErrorStatuses =
         getPropertyIntegerRangeValue(
-            properties, HTTP_CLIENT_ERROR_STATUSES, parent.httpClientErrorStatuses);
+            properties, HTTP_CLIENT_ERROR_STATUSES, DEFAULT_HTTP_CLIENT_ERROR_STATUSES);
 
     httpServerTagQueryString =
         getPropertyBooleanValue(
-            properties, HTTP_SERVER_TAG_QUERY_STRING, parent.httpServerTagQueryString);
+            properties, HTTP_SERVER_TAG_QUERY_STRING, DEFAULT_HTTP_SERVER_TAG_QUERY_STRING);
 
     httpClientTagQueryString =
         getPropertyBooleanValue(
-            properties, HTTP_CLIENT_TAG_QUERY_STRING, parent.httpClientTagQueryString);
+            properties, HTTP_CLIENT_TAG_QUERY_STRING, DEFAULT_HTTP_CLIENT_TAG_QUERY_STRING);
 
     scopeDepthLimit =
-        getPropertyIntegerValue(properties, SCOPE_DEPTH_LIMIT, parent.scopeDepthLimit);
+        getPropertyIntegerValue(properties, SCOPE_DEPTH_LIMIT, DEFAULT_SCOPE_DEPTH_LIMIT);
 
     // do we care about the integer downcast here?
     spanDurationAboveAverageStacktraceNanos =
@@ -262,35 +272,37 @@ public class Config {
                 properties,
                 SPAN_DURATION_ABOVE_AVERAGE_STACKTRACE_MILLIS,
                 (int)
-                    TimeUnit.NANOSECONDS.toMillis(parent.spanDurationAboveAverageStacktraceNanos)));
+                    TimeUnit.NANOSECONDS.toMillis(
+                        DEFAULT_SPAN_DURATION_ABOVE_AVERAGE_STACKTRACE_MILLIS)));
 
     runtimeContextFieldInjection =
         getPropertyBooleanValue(
-            properties, RUNTIME_CONTEXT_FIELD_INJECTION, parent.runtimeContextFieldInjection);
+            properties, RUNTIME_CONTEXT_FIELD_INJECTION, DEFAULT_RUNTIME_CONTEXT_FIELD_INJECTION);
 
     logInjectionEnabled =
-        getPropertyBooleanValue(properties, LOG_INJECTION_ENABLED, parent.logInjectionEnabled);
+        getPropertyBooleanValue(properties, LOG_INJECTION_ENABLED, DEFAULT_LOG_INJECTION_ENABLED);
 
     experimentalLogCaptureThreshold =
         properties.getProperty(
-            EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, parent.experimentalLogCaptureThreshold);
+            EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD);
 
     experimentalControllerAndViewSpansEnabled =
         getPropertyBooleanValue(
             properties,
             EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
-            parent.experimentalControllerAndViewSpansEnabled);
+            DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED);
 
     micrometerStepMillis =
-        getPropertyIntegerValue(properties, MICROMETER_STEP_MILLIS, parent.micrometerStepMillis);
+        getPropertyIntegerValue(properties, MICROMETER_STEP_MILLIS, DEFAULT_MICROMETER_STEP_MILLIS);
 
-    traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, parent.traceAnnotations);
+    traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, DEFAULT_TRACE_ANNOTATIONS);
 
-    traceMethods = properties.getProperty(TRACE_METHODS, parent.traceMethods);
+    traceMethods = properties.getProperty(TRACE_METHODS, DEFAULT_TRACE_METHODS);
 
     traceExecutorsAll =
-        getPropertyBooleanValue(properties, TRACE_EXECUTORS_ALL, parent.traceExecutorsAll);
-    traceExecutors = getPropertyListValue(properties, TRACE_EXECUTORS, parent.traceExecutors);
+        getPropertyBooleanValue(properties, TRACE_EXECUTORS_ALL, DEFAULT_TRACE_EXECUTORS_ALL);
+    traceExecutors =
+        getPropertyListValue(properties, TRACE_EXECUTORS, parseList(DEFAULT_TRACE_EXECUTORS));
 
     log.debug("New instance: {}", this);
   }
@@ -307,7 +319,7 @@ public class Config {
    * @param defaultEnabled
    * @return
    */
-  public static boolean integrationEnabled(
+  public boolean integrationEnabled(
       final SortedSet<String> integrationNames, final boolean defaultEnabled) {
     // If default is enabled, we want to enable individually,
     // if default is disabled, we want to disable individually.
@@ -335,19 +347,21 @@ public class Config {
    * @return
    * @deprecated This method should only be used internally. Use the explicit getter instead.
    */
-  public static String getSettingFromEnvironment(final String name, final String defaultValue) {
+  public String getSettingFromEnvironment(final String name, final String defaultValue) {
     String value;
 
-    // System properties and properties provided from command line have the highest precedence
-    value = System.getProperties().getProperty(propertyNameToSystemPropertyName(name));
-    if (null != value) {
-      return value;
-    }
+    if (lookAtEnvironment) {
+      // System properties and properties provided from command line have the highest precedence
+      value = System.getProperties().getProperty(propertyNameToSystemPropertyName(name));
+      if (null != value) {
+        return value;
+      }
 
-    // If value not provided from system properties, looking at env variables
-    value = System.getenv(propertyNameToEnvironmentVariableName(name));
-    if (null != value) {
-      return value;
+      // If value not provided from system properties, looking at env variables
+      value = System.getenv(propertyNameToEnvironmentVariableName(name));
+      if (null != value) {
+        return value;
+      }
     }
 
     // If value is not defined yet, we look at properties optionally defined in a properties file
@@ -365,8 +379,7 @@ public class Config {
    *
    * @deprecated This method should only be used internally. Use the explicit getter instead.
    */
-  public static List<String> getListSettingFromEnvironment(
-      final String name, final String defaultValue) {
+  public List<String> getListSettingFromEnvironment(final String name, final String defaultValue) {
     return parseList(getSettingFromEnvironment(name, defaultValue));
   }
 
@@ -375,8 +388,7 @@ public class Config {
    *
    * @deprecated This method should only be used internally. Use the explicit getter instead.
    */
-  public static Boolean getBooleanSettingFromEnvironment(
-      final String name, final Boolean defaultValue) {
+  public Boolean getBooleanSettingFromEnvironment(final String name, final Boolean defaultValue) {
     final String value = getSettingFromEnvironment(name, null);
     return value == null || value.trim().isEmpty() ? defaultValue : Boolean.valueOf(value);
   }
@@ -386,7 +398,7 @@ public class Config {
    *
    * @deprecated This method should only be used internally. Use the explicit getter instead.
    */
-  public static Float getFloatSettingFromEnvironment(final String name, final Float defaultValue) {
+  public Float getFloatSettingFromEnvironment(final String name, final Float defaultValue) {
     final String value = getSettingFromEnvironment(name, null);
     try {
       return value == null ? defaultValue : Float.valueOf(value);
@@ -399,8 +411,7 @@ public class Config {
   /**
    * Calls {@link #getSettingFromEnvironment(String, String)} and converts the result to a Integer.
    */
-  private static Integer getIntegerSettingFromEnvironment(
-      final String name, final Integer defaultValue) {
+  private Integer getIntegerSettingFromEnvironment(final String name, final Integer defaultValue) {
     final String value = getSettingFromEnvironment(name, null);
     try {
       return value == null ? defaultValue : Integer.valueOf(value);
@@ -414,7 +425,7 @@ public class Config {
    * Calls {@link #getSettingFromEnvironment(String, String)} and converts the result to a set of
    * strings splitting by space or comma.
    */
-  private static <T extends Enum<T>> Set<T> getEnumSetSettingFromEnvironment(
+  private <T extends Enum<T>> Set<T> getEnumSetSettingFromEnvironment(
       final String name,
       final String defaultValue,
       final Class<T> clazz,
@@ -680,17 +691,41 @@ public class Config {
   }
 
   // This has to be placed after all other static fields to give them a chance to initialize
-  private static final Config INSTANCE = new Config();
+  private static final Config INSTANCE;
+
+  static {
+    Properties properties = null;
+    Class<?> clazz = null;
+    try {
+      clazz = Class.forName("io.opentelemetry.auto.config.ConfigOverride");
+    } catch (final ClassNotFoundException e) {
+    }
+    if (clazz != null) {
+      // exceptions in this code should be propagated up so that agent startup fails
+      try {
+        final Method method = clazz.getMethod("get");
+        properties = (Properties) method.invoke(null);
+      } catch (final Exception e) {
+        throw new IllegalStateException(e);
+      }
+    }
+    if (properties != null) {
+      INSTANCE = new Config(properties);
+    } else {
+      INSTANCE = new Config();
+    }
+  }
 
   public static Config get() {
     return INSTANCE;
   }
 
+  // only used by tests
   public static Config get(final Properties properties) {
     if (properties == null || properties.isEmpty()) {
       return INSTANCE;
     } else {
-      return new Config(properties, INSTANCE);
+      return new Config(properties);
     }
   }
 }

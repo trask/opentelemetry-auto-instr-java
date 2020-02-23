@@ -219,6 +219,8 @@ public class Config {
 
   // Read order: Properties -> Default
   private Config(final Properties properties) {
+    propertiesFromConfigFile = new Properties();
+
     exporterJar = properties.getProperty(EXPORTER_JAR, null);
     serviceName = properties.getProperty(SERVICE, DEFAULT_SERVICE_NAME);
 
@@ -678,7 +680,7 @@ public class Config {
     Properties properties = null;
     Class<?> clazz = null;
     try {
-      clazz = Class.forName("io.opentelemetry.auto.tooling.ConfigOverride");
+      clazz = Class.forName("io.opentelemetry.auto.config.ConfigOverride");
     } catch (final ClassNotFoundException e) {
     }
     if (clazz != null) {

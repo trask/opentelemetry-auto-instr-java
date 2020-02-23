@@ -21,6 +21,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
@@ -162,11 +163,15 @@ public class Config {
   @Getter private final boolean kafkaClientPropagationEnabled;
 
   // Values from an optionally provided properties file
-  private static Properties propertiesFromConfigFile;
+  private final Properties propertiesFromConfigFile;
+
+  private final boolean lookAtEnvironment;
 
   // Read order: System Properties -> Env Variables, [-> properties file], [-> default value]
   // Visible for testing
   Config() {
+    lookAtEnvironment = true;
+
     propertiesFromConfigFile = loadConfigurationFile();
 
     propagators = getListSettingFromEnvironment(PROPAGATORS, null);
@@ -238,75 +243,81 @@ public class Config {
     log.debug("New instance: {}", this);
   }
 
-  // Read order: Properties -> Parent
-  private Config(final Properties properties, final Config parent) {
-    exporterJar = properties.getProperty(EXPORTER_JAR, parent.exporterJar);
-    exporter = properties.getProperty(EXPORTER, parent.exporter);
+  // Read order: Properties -> Default
+  private Config(final Properties properties) {
+    lookAtEnvironment = false;
 
-    propagators = getPropertyListValue(properties, PROPAGATORS, parent.propagators);
+    propertiesFromConfigFile = properties;
 
-    traceEnabled = getPropertyBooleanValue(properties, TRACE_ENABLED, parent.traceEnabled);
+    exporterJar = properties.getProperty(EXPORTER_JAR, null);
+    exporter = properties.getProperty(EXPORTER, "otlp");
+
+    propagators = getPropertyListValue(properties, PROPAGATORS, null);
+
+    traceEnabled = getPropertyBooleanValue(properties, TRACE_ENABLED, DEFAULT_TRACE_ENABLED);
     integrationsEnabled =
-        getPropertyBooleanValue(properties, INTEGRATIONS_ENABLED, parent.integrationsEnabled);
+        getPropertyBooleanValue(properties, INTEGRATIONS_ENABLED, DEFAULT_INTEGRATIONS_ENABLED);
 
     excludedClasses =
-        getPropertyListValue(properties, TRACE_CLASSES_EXCLUDE, parent.excludedClasses);
+        getPropertyListValue(properties, TRACE_CLASSES_EXCLUDE, Collections.<String>emptyList());
 
     httpServerErrorStatuses =
         getPropertyIntegerRangeValue(
-            properties, HTTP_SERVER_ERROR_STATUSES, parent.httpServerErrorStatuses);
+            properties, HTTP_SERVER_ERROR_STATUSES, DEFAULT_HTTP_SERVER_ERROR_STATUSES);
 
     httpClientErrorStatuses =
         getPropertyIntegerRangeValue(
-            properties, HTTP_CLIENT_ERROR_STATUSES, parent.httpClientErrorStatuses);
+            properties, HTTP_CLIENT_ERROR_STATUSES, DEFAULT_HTTP_CLIENT_ERROR_STATUSES);
 
     httpServerTagQueryString =
         getPropertyBooleanValue(
-            properties, HTTP_SERVER_TAG_QUERY_STRING, parent.httpServerTagQueryString);
+            properties, HTTP_SERVER_TAG_QUERY_STRING, DEFAULT_HTTP_SERVER_TAG_QUERY_STRING);
 
     httpClientTagQueryString =
         getPropertyBooleanValue(
-            properties, HTTP_CLIENT_TAG_QUERY_STRING, parent.httpClientTagQueryString);
+            properties, HTTP_CLIENT_TAG_QUERY_STRING, DEFAULT_HTTP_CLIENT_TAG_QUERY_STRING);
 
     scopeDepthLimit =
-        getPropertyIntegerValue(properties, SCOPE_DEPTH_LIMIT, parent.scopeDepthLimit);
+        getPropertyIntegerValue(properties, SCOPE_DEPTH_LIMIT, DEFAULT_SCOPE_DEPTH_LIMIT);
 
     runtimeContextFieldInjection =
         getPropertyBooleanValue(
-            properties, RUNTIME_CONTEXT_FIELD_INJECTION, parent.runtimeContextFieldInjection);
+            properties, RUNTIME_CONTEXT_FIELD_INJECTION, DEFAULT_RUNTIME_CONTEXT_FIELD_INJECTION);
 
     logInjectionEnabled =
-        getPropertyBooleanValue(properties, LOG_INJECTION_ENABLED, parent.logInjectionEnabled);
+        getPropertyBooleanValue(properties, LOG_INJECTION_ENABLED, DEFAULT_LOG_INJECTION_ENABLED);
 
     experimentalLogCaptureThreshold =
         toUpper(
             properties.getProperty(
-                EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, parent.experimentalLogCaptureThreshold));
+                EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD));
 
     experimentalControllerAndViewSpansEnabled =
         getPropertyBooleanValue(
             properties,
             EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
-            parent.experimentalControllerAndViewSpansEnabled);
+            DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED);
 
     micrometerStepMillis =
-        getPropertyIntegerValue(properties, MICROMETER_STEP_MILLIS, parent.micrometerStepMillis);
+        getPropertyIntegerValue(properties, MICROMETER_STEP_MILLIS, DEFAULT_MICROMETER_STEP_MILLIS);
 
-    traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, parent.traceAnnotations);
+    traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, DEFAULT_TRACE_ANNOTATIONS);
 
-    traceMethods = properties.getProperty(TRACE_METHODS, parent.traceMethods);
-    traceMethodsExclude = properties.getProperty(TRACE_METHODS_EXCLUDE, parent.traceMethodsExclude);
+    traceMethods = properties.getProperty(TRACE_METHODS, DEFAULT_TRACE_METHODS);
+    traceMethodsExclude =
+        properties.getProperty(TRACE_METHODS_EXCLUDE, DEFAULT_TRACE_METHODS_EXCLUDE);
 
     traceExecutorsAll =
-        getPropertyBooleanValue(properties, TRACE_EXECUTORS_ALL, parent.traceExecutorsAll);
-    traceExecutors = getPropertyListValue(properties, TRACE_EXECUTORS, parent.traceExecutors);
+        getPropertyBooleanValue(properties, TRACE_EXECUTORS_ALL, DEFAULT_TRACE_EXECUTORS_ALL);
+    traceExecutors =
+        getPropertyListValue(properties, TRACE_EXECUTORS, parseList(DEFAULT_TRACE_EXECUTORS));
 
     sqlNormalizerEnabled =
-        getPropertyBooleanValue(properties, SQL_NORMALIZER_ENABLED, parent.sqlNormalizerEnabled);
+        getPropertyBooleanValue(properties, SQL_NORMALIZER_ENABLED, DEFAULT_SQL_NORMALIZER_ENABLED);
 
     kafkaClientPropagationEnabled =
         getPropertyBooleanValue(
-            properties, KAFKA_CLIENT_PROPAGATION_ENABLED, parent.kafkaClientPropagationEnabled);
+            properties, KAFKA_CLIENT_PROPAGATION_ENABLED, DEFAULT_KAFKA_CLIENT_PROPAGATION_ENABLED);
 
     log.debug("New instance: {}", this);
   }
@@ -339,20 +350,22 @@ public class Config {
    * @return
    * @deprecated This method should only be used internally. Use the explicit getter instead.
    */
-  public static String getSettingFromEnvironment(final String name, final String defaultValue) {
+  public String getSettingFromEnvironment(final String name, final String defaultValue) {
     String value;
     final String systemPropertyName = propertyNameToSystemPropertyName(name);
 
-    // System properties and properties provided from command line have the highest precedence
-    value = System.getProperties().getProperty(systemPropertyName);
-    if (null != value) {
-      return value;
-    }
+    if (lookAtEnvironment) {
+      // System properties and properties provided from command line have the highest precedence
+      value = System.getProperties().getProperty(systemPropertyName);
+      if (null != value) {
+        return value;
+      }
 
-    // If value not provided from system properties, looking at env variables
-    value = System.getenv(propertyNameToEnvironmentVariableName(name));
-    if (null != value) {
-      return value;
+      // If value not provided from system properties, looking at env variables
+      value = System.getenv(propertyNameToEnvironmentVariableName(name));
+      if (null != value) {
+        return value;
+      }
     }
 
     // If value is not defined yet, we look at properties optionally defined in a properties file
@@ -369,28 +382,25 @@ public class Config {
    * splitting on `,`.
    */
   @NonNull
-  private static List<String> getListSettingFromEnvironment(
-      final String name, final String defaultValue) {
+  private List<String> getListSettingFromEnvironment(final String name, final String defaultValue) {
     return parseList(getSettingFromEnvironment(name, defaultValue));
   }
 
   /**
    * Calls {@link #getSettingFromEnvironment(String, String)} and converts the result to a Boolean.
    */
-  private static Boolean getBooleanSettingFromEnvironment(
-      final String name, final Boolean defaultValue) {
+  private Boolean getBooleanSettingFromEnvironment(final String name, final Boolean defaultValue) {
     return getSettingFromEnvironmentWithLog(name, Boolean.class, defaultValue);
   }
 
   /**
    * Calls {@link #getSettingFromEnvironment(String, String)} and converts the result to a Integer.
    */
-  private static Integer getIntegerSettingFromEnvironment(
-      final String name, final Integer defaultValue) {
+  private Integer getIntegerSettingFromEnvironment(final String name, final Integer defaultValue) {
     return getSettingFromEnvironmentWithLog(name, Integer.class, defaultValue);
   }
 
-  private static <T> T getSettingFromEnvironmentWithLog(
+  private <T> T getSettingFromEnvironmentWithLog(
       final String name, final Class<T> tClass, final T defaultValue) {
     try {
       return valueOf(getSettingFromEnvironment(name, null), tClass, defaultValue);
@@ -400,7 +410,7 @@ public class Config {
     }
   }
 
-  private static BitSet getIntegerRangeSettingFromEnvironment(
+  private BitSet getIntegerRangeSettingFromEnvironment(
       final String name, final BitSet defaultValue) {
     final String value = getSettingFromEnvironment(name, null);
     try {
@@ -586,17 +596,41 @@ public class Config {
   }
 
   // This has to be placed after all other static fields to give them a chance to initialize
-  private static final Config INSTANCE = new Config();
+  private static final Config INSTANCE;
+
+  static {
+    Properties properties = null;
+    Class<?> clazz = null;
+    try {
+      clazz = Class.forName("io.opentelemetry.auto.config.ConfigOverride");
+    } catch (final ClassNotFoundException e) {
+    }
+    if (clazz != null) {
+      // exceptions in this code should be propagated up so that agent startup fails
+      try {
+        final Method method = clazz.getMethod("get");
+        properties = (Properties) method.invoke(null);
+      } catch (final Exception e) {
+        throw new IllegalStateException(e);
+      }
+    }
+    if (properties != null) {
+      INSTANCE = new Config(properties);
+    } else {
+      INSTANCE = new Config();
+    }
+  }
 
   public static Config get() {
     return INSTANCE;
   }
 
+  // only used by tests
   public static Config get(final Properties properties) {
     if (properties == null || properties.isEmpty()) {
       return INSTANCE;
     } else {
-      return new Config(properties, INSTANCE);
+      return new Config(properties);
     }
   }
 }

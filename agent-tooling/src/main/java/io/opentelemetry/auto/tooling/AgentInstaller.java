@@ -52,15 +52,19 @@ public class AgentInstaller {
     return INSTRUMENTATION;
   }
 
-  public static void installBytebuddyAgent(final Instrumentation inst, final URL bootstrapURL) {
+  public static void installBytebuddyAgent(final Instrumentation inst, final URL bootstrapURL)
+      throws Exception {
+    Class<?> clazz = null;
     try {
-      final Class<?> clazz = Class.forName("io.opentelemetry.auto.tooling.BeforeAgentInstaller");
+      clazz = Class.forName("io.opentelemetry.auto.tooling.BeforeAgentInstaller");
+    } catch (final ClassNotFoundException e) {
+    }
+    if (clazz != null) {
+      // exceptions in this code should be propagated up so that agent startup fails
       final Method method =
           clazz.getMethod(
               "beforeInstallBytebuddyAgent", new Class[] {Instrumentation.class, URL.class});
       method.invoke(null, inst, bootstrapURL);
-    } catch (final Exception e) {
-      log.debug(e.getMessage(), e);
     }
     if (Config.get().isTraceEnabled()) {
       installBytebuddyAgent(inst, false, new AgentBuilder.Listener[0]);

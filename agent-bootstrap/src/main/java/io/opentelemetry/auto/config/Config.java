@@ -20,6 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -81,6 +82,10 @@ public class Config {
       "experimental.controller-and-view.spans.enabled";
 
   public static final String MICROMETER_STEP_MILLIS = "micrometer.step.millis";
+
+  // this is not exposed to end users
+  private static final String ADDITIONAL_BOOTSTRAP_PACKAGE_PREFIXES =
+      "additional.bootstrap.package.prefixes";
 
   private static final String DEFAULT_SERVICE_NAME = "(unknown)";
   private static final boolean DEFAULT_TRACE_ENABLED = true;
@@ -152,6 +157,9 @@ public class Config {
 
   @Getter private final boolean traceExecutorsAll;
   @Getter private final List<String> traceExecutors;
+
+  // this is not exposed to end users
+  @Getter private final List<String> additionalBootstrapPackagePrefixes;
 
   // Values from an optionally provided properties file
   private final Properties propertiesFromConfigFile;
@@ -226,6 +234,9 @@ public class Config {
         getBooleanSettingFromEnvironment(TRACE_EXECUTORS_ALL, DEFAULT_TRACE_EXECUTORS_ALL);
 
     traceExecutors = getListSettingFromEnvironment(TRACE_EXECUTORS, DEFAULT_TRACE_EXECUTORS);
+
+    // this is not exposed to end users
+    additionalBootstrapPackagePrefixes = new ArrayList<>();
 
     log.debug("New instance: {}", this);
   }
@@ -303,6 +314,9 @@ public class Config {
         getPropertyBooleanValue(properties, TRACE_EXECUTORS_ALL, DEFAULT_TRACE_EXECUTORS_ALL);
     traceExecutors =
         getPropertyListValue(properties, TRACE_EXECUTORS, parseList(DEFAULT_TRACE_EXECUTORS));
+
+    additionalBootstrapPackagePrefixes =
+        parseList(properties.getProperty(ADDITIONAL_BOOTSTRAP_PACKAGE_PREFIXES));
 
     log.debug("New instance: {}", this);
   }

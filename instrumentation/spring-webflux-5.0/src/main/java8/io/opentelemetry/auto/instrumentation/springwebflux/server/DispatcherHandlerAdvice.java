@@ -19,6 +19,7 @@ import static io.opentelemetry.auto.instrumentation.springwebflux.server.SpringW
 import static io.opentelemetry.auto.instrumentation.springwebflux.server.SpringWebfluxHttpServerDecorator.TRACER;
 import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
 
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.trace.Span;
 import net.bytebuddy.asm.Advice;
@@ -41,11 +42,15 @@ public class DispatcherHandlerAdvice {
       exchange.getAttributes().put(AdviceUtils.PARENT_SPAN_ATTRIBUTE, parentSpan);
     }
 
-    final Span span = TRACER.spanBuilder("DispatcherHandler.handle").startSpan();
-    DECORATE.afterStart(span);
-    exchange.getAttributes().put(AdviceUtils.SPAN_ATTRIBUTE, span);
+    if (Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+      final Span span = TRACER.spanBuilder("DispatcherHandler.handle").startSpan();
+      DECORATE.afterStart(span);
+      exchange.getAttributes().put(AdviceUtils.SPAN_ATTRIBUTE, span);
 
-    return new SpanWithScope(span, currentContextWith(span));
+      return new SpanWithScope(span, currentContextWith(span));
+    } else {
+      return null;
+    }
   }
 
   @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)

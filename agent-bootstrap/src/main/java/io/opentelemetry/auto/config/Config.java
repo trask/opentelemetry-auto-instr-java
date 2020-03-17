@@ -79,6 +79,9 @@ public class Config {
   public static final String EXPERIMENTAL_LOG_CAPTURE_THRESHOLD =
       "experimental.log.capture.threshold";
 
+  public static final String EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED =
+      "experimental.controller-and-view.spans.enabled";
+
   private static final boolean DEFAULT_TRACE_ENABLED = true;
   public static final boolean DEFAULT_INTEGRATIONS_ENABLED = true;
 
@@ -94,6 +97,7 @@ public class Config {
 
   public static final boolean DEFAULT_LOG_INJECTION_ENABLED = false;
   public static final String DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD = null;
+  public static final boolean DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED = true;
 
   public static final boolean DEFAULT_KAFKA_CLIENT_PROPAGATION_ENABLED = true;
 
@@ -136,6 +140,8 @@ public class Config {
   // | TRACE/FINEST | FINEST  | TRACE   | TRACE  |
   // | ALL          | ALL     | ALL     | ALL    |
   @Getter private final String experimentalLogCaptureThreshold;
+
+  @Getter private final boolean experimentalControllerAndViewSpansEnabled;
 
   @Getter private final String traceAnnotations;
 
@@ -196,6 +202,11 @@ public class Config {
         toUpper(
             getSettingFromEnvironment(
                 EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD));
+
+    experimentalControllerAndViewSpansEnabled =
+        getBooleanSettingFromEnvironment(
+            EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
+            DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED);
 
     traceAnnotations = getSettingFromEnvironment(TRACE_ANNOTATIONS, DEFAULT_TRACE_ANNOTATIONS);
 
@@ -262,6 +273,12 @@ public class Config {
         toUpper(
             properties.getProperty(
                 EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, parent.experimentalLogCaptureThreshold));
+
+    experimentalControllerAndViewSpansEnabled =
+        getPropertyBooleanValue(
+            properties,
+            EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
+            parent.experimentalControllerAndViewSpansEnabled);
 
     traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, parent.traceAnnotations);
 

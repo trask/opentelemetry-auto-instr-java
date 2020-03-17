@@ -20,6 +20,7 @@ import static io.opentelemetry.auto.instrumentation.jaxrs.v2_0.JaxRsAnnotationsD
 import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
 
 import com.google.auto.service.AutoService;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -44,13 +45,6 @@ public class DefaultRequestContextInstrumentation extends AbstractRequestContext
         @Advice.This final ContainerRequestContext context) {
 
       if (context.getProperty(JaxRsAnnotationsDecorator.ABORT_HANDLED) == null) {
-        final Span parent = TRACER.getCurrentSpan();
-        final Span span = TRACER.spanBuilder("jax-rs.request.abort").startSpan();
-
-        // Save spans so a more specific instrumentation can run later
-        context.setProperty(JaxRsAnnotationsDecorator.ABORT_PARENT, parent);
-        context.setProperty(JaxRsAnnotationsDecorator.ABORT_SPAN, span);
-
         final Class filterClass =
             (Class) context.getProperty(JaxRsAnnotationsDecorator.ABORT_FILTER_CLASS);
         Method method = null;
@@ -61,12 +55,27 @@ public class DefaultRequestContextInstrumentation extends AbstractRequestContext
           // can only be aborted inside the filter method
         }
 
-        final SpanWithScope scope = new SpanWithScope(span, currentContextWith(span));
+        final Span parent = TRACER.getCurrentSpan();
+        if (Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+          final Span span = TRACER.spanBuilder("jax-rs.request.abort").startSpan();
 
-        DECORATE.afterStart(span);
-        DECORATE.onJaxRsSpan(span, parent, filterClass, method);
+          // Save spans so a more specific instrumentation can run later
+          context.setProperty(JaxRsAnnotationsDecorator.ABORT_PARENT, parent);
+          context.setProperty(JaxRsAnnotationsDecorator.ABORT_SPAN, span);
 
-        return scope;
+          final SpanWithScope scope = new SpanWithScope(span, currentContextWith(span));
+
+          DECORATE.afterStart(span);
+          DECORATE.onJaxRsSpan(span, parent, filterClass, method);
+
+          return scope;
+        } else {
+          // Save parent span so a more specific instrumentation can run later
+          context.setProperty(JaxRsAnnotationsDecorator.ABORT_PARENT, parent);
+
+          DECORATE.onJaxRsSpan(null, parent, filterClass, method);
+          return null;
+        }
       }
 
       return null;

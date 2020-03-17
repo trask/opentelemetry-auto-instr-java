@@ -27,6 +27,7 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -85,16 +86,22 @@ public abstract class AbstractRequestContextInstrumentation extends Instrumenter
         Span parent = (Span) context.getProperty(JaxRsAnnotationsDecorator.ABORT_PARENT);
         Span span = (Span) context.getProperty(JaxRsAnnotationsDecorator.ABORT_SPAN);
 
-        if (span == null) {
+        if (parent == null) {
           parent = TRACER.getCurrentSpan();
-          span = TRACER.spanBuilder("jax-rs.request.abort").startSpan();
 
-          final SpanWithScope scope = new SpanWithScope(span, currentContextWith(span));
+          if (Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+            span = TRACER.spanBuilder("jax-rs.request.abort").startSpan();
 
-          DECORATE.afterStart(span);
-          DECORATE.onJaxRsSpan(span, parent, resourceClass, method);
+            final SpanWithScope scope = new SpanWithScope(span, currentContextWith(span));
 
-          return scope;
+            DECORATE.afterStart(span);
+            DECORATE.onJaxRsSpan(span, parent, resourceClass, method);
+
+            return scope;
+          } else {
+            DECORATE.onJaxRsSpan(null, parent, resourceClass, method);
+            return null;
+          }
         } else {
           DECORATE.onJaxRsSpan(span, parent, resourceClass, method);
           return null;

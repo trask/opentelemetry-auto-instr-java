@@ -33,8 +33,10 @@ import com.google.auto.service.AutoService;
 import io.opentelemetry.auto.bootstrap.CallDepthThreadLocalMap;
 import io.opentelemetry.auto.bootstrap.ContextStore;
 import io.opentelemetry.auto.bootstrap.InstrumentationContext;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
+import io.opentelemetry.trace.DefaultSpan;
 import io.opentelemetry.trace.Span;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -131,6 +133,11 @@ public final class JaxRsAnnotationsInstrumentation extends Instrumenter.Default 
 
       // Rename the parent span according to the path represented by these annotations.
       final Span parent = TRACER.getCurrentSpan();
+
+      if (!Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+        DECORATE.onJaxRsSpan(null, parent, target.getClass(), method);
+        return new SpanWithScope(DefaultSpan.getInvalid(), null);
+      }
 
       final Span span = TRACER.spanBuilder(JAX_ENDPOINT_OPERATION_NAME).startSpan();
       DECORATE.onJaxRsSpan(span, parent, target.getClass(), method);

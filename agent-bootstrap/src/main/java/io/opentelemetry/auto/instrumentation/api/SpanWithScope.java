@@ -34,6 +34,8 @@ public class SpanWithScope {
   }
 
   public void closeScope() {
-    scope.close();
+    if (scope != null) {
+      scope.close();
+    }
   }
 }

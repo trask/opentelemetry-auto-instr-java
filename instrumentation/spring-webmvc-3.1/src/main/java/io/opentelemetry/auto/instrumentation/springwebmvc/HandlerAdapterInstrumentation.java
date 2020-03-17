@@ -33,6 +33,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
 import io.grpc.Context;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -88,7 +89,8 @@ public final class HandlerAdapterInstrumentation extends Instrumenter.Default {
         DECORATE.onRequest(getSpan((Context) parentContext), request);
       }
 
-      if (!TRACER.getCurrentSpan().getContext().isValid()) {
+      if (!TRACER.getCurrentSpan().getContext().isValid()
+          || !Config.get().isExperimentalControllerAndViewSpansEnabled()) {
         return null;
       }
 

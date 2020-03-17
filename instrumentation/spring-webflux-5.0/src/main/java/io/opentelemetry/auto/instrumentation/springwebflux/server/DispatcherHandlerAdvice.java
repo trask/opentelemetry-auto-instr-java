@@ -23,6 +23,7 @@ import static io.opentelemetry.trace.TracingContextUtils.getSpan;
 import static io.opentelemetry.trace.TracingContextUtils.withSpan;
 
 import io.grpc.Context;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.trace.Span;
 import net.bytebuddy.asm.Advice;
@@ -46,6 +47,10 @@ public class DispatcherHandlerAdvice {
     Context parentContext = Context.current();
     exchange.getAttributes().put(AdviceUtils.PARENT_CONTEXT_ATTRIBUTE, parentContext);
 
+    if (!Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+      return;
+    }
+
     final Span span =
         TRACER
             .spanBuilder("DispatcherHandler.handle")
@@ -66,6 +71,11 @@ public class DispatcherHandlerAdvice {
       @Advice.Return(readOnly = false) Mono<Void> mono,
       @Advice.Local("otelScope") Scope otelScope,
       @Advice.Local("otelContext") Context otelContext) {
+
+    if (otelScope == null) {
+      return;
+    }
+
     if (throwable == null && mono != null) {
       mono = AdviceUtils.setPublisherSpan(mono, otelContext);
     } else if (throwable != null) {

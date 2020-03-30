@@ -72,4 +72,9 @@ class RatpackHttpClientTest extends HttpClientTest {
   boolean testRemoteConnection() {
     return false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

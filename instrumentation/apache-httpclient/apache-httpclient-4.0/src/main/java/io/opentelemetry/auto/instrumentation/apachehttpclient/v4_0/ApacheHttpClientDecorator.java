@@ -16,9 +16,11 @@
 package io.opentelemetry.auto.instrumentation.apachehttpclient.v4_0;
 
 import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator;
 import io.opentelemetry.trace.Tracer;
 import java.net.URI;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 
@@ -41,5 +43,11 @@ public class ApacheHttpClientDecorator extends HttpClientDecorator<HttpUriReques
   @Override
   protected Integer status(final HttpResponse httpResponse) {
     return httpResponse.getStatusLine().getStatusCode();
+  }
+
+  @Override
+  protected String getAiAppIdResponseHeader(final HttpResponse response) {
+    final Header header = response.getFirstHeader(AiAppId.RESPONSE_HEADER_NAME);
+    return header == null ? null : header.getValue();
   }
 }

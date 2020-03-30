@@ -61,4 +61,9 @@ class PlayWSClientTest extends HttpClientTest {
   boolean testRemoteConnection() {
     return false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

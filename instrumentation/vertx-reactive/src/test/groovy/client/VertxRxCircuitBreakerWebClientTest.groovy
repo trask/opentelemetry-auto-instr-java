@@ -81,4 +81,9 @@ class VertxRxCircuitBreakerWebClientTest extends HttpClientTest {
     // FIXME: figure out how to configure timeouts.
     false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

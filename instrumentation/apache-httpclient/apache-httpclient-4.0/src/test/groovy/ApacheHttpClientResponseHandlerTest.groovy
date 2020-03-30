@@ -57,4 +57,9 @@ class ApacheHttpClientResponseHandlerTest extends HttpClientTest {
 
     return status
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

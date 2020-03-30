@@ -82,4 +82,9 @@ class CommonsHttpClientTest extends HttpClientTest {
     // Generates 4 spans
     false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

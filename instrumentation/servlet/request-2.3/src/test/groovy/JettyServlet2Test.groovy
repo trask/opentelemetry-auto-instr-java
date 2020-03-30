@@ -82,6 +82,11 @@ class JettyServlet2Test extends HttpServerTest<Server> {
     false
   }
 
+  @Override
+  boolean sendsBackAiTargetAppId() {
+    true
+  }
+
   // parent span must be cast otherwise it breaks debugging classloading (junit loads it early)
   void serverSpan(TraceAssert trace, int index, String traceID = null, String parentID = null, String method = "GET", ServerEndpoint endpoint = SUCCESS) {
     trace.span(index) {

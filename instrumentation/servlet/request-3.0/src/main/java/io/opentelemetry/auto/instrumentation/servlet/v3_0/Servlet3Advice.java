@@ -19,6 +19,7 @@ import static io.opentelemetry.auto.instrumentation.servlet.v3_0.Servlet3HttpSer
 import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
 
 import io.opentelemetry.auto.bootstrap.InstrumentationContext;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.trace.Span;
 import java.lang.reflect.Method;
@@ -58,6 +59,11 @@ public class Servlet3Advice {
     // For use by HttpServletResponseInstrumentation:
     InstrumentationContext.get(HttpServletResponse.class, HttpServletRequest.class)
         .put((HttpServletResponse) response, httpServletRequest);
+
+    final String appId = AiAppId.getAppId();
+    if (!appId.isEmpty()) {
+      ((HttpServletResponse) response).setHeader(AiAppId.RESPONSE_HEADER_NAME, "appId=" + appId);
+    }
 
     span = TRACER.startSpan(httpServletRequest, method, servlet.getClass().getName());
     scope = TRACER.withSpan(span);

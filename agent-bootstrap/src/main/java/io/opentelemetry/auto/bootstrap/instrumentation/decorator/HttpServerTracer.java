@@ -24,6 +24,7 @@ import static io.opentelemetry.trace.TracingContextUtils.withSpan;
 
 import io.grpc.Context;
 import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.MoreAttributes;
 import io.opentelemetry.context.Scope;
@@ -95,6 +96,12 @@ public abstract class HttpServerTracer<REQUEST, CONNECTION, STORAGE> {
 
   // TODO use semantic attributes
   protected void onRequest(final Span span, final REQUEST request) {
+
+    final String sourceAppId = span.getContext().getTraceState().get(AiAppId.TRACESTATE_KEY);
+    if (sourceAppId != null && !sourceAppId.isEmpty()) {
+      span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, sourceAppId);
+    }
+
     SemanticAttributes.HTTP_METHOD.set(span, method(request));
 
     // Copy of HttpClientDecorator url handling

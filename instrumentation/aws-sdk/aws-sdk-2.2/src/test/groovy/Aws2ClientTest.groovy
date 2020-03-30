@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator
 import io.opentelemetry.auto.test.AgentTestRunner
 import io.opentelemetry.trace.attributes.SemanticAttributes
@@ -117,6 +118,7 @@ class Aws2ClientTest extends AgentTestRunner {
             } else if (service == "Kinesis") {
               "aws.stream.name" "somestream"
             }
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }
@@ -205,6 +207,7 @@ class Aws2ClientTest extends AgentTestRunner {
             } else if (service == "Kinesis") {
               "aws.stream.name" "somestream"
             }
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }
@@ -223,6 +226,7 @@ class Aws2ClientTest extends AgentTestRunner {
             "${SemanticAttributes.HTTP_METHOD.key()}" "$method"
             "${SemanticAttributes.HTTP_STATUS_CODE.key()}" 200
             "${SemanticAttributes.HTTP_USER_AGENT.key()}" { it.startsWith("aws-sdk-java/") }
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }

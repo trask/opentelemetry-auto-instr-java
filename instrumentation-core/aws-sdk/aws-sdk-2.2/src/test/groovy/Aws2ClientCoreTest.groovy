@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator
 import io.opentelemetry.auto.test.InstrumentationTestRunner
 import io.opentelemetry.instrumentation.awssdk.v2_2.AwsSdk
@@ -122,6 +123,7 @@ class Aws2ClientCoreTest extends InstrumentationTestRunner {
             } else if (service == "Kinesis") {
               "aws.stream.name" "somestream"
             }
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }
@@ -213,6 +215,7 @@ class Aws2ClientCoreTest extends InstrumentationTestRunner {
             } else if (service == "Kinesis") {
               "aws.stream.name" "somestream"
             }
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }

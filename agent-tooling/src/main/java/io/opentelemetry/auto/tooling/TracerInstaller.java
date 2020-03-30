@@ -16,8 +16,11 @@
 package io.opentelemetry.auto.tooling;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiHttpTraceContext;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.exportersupport.MetricExporterFactory;
+import io.opentelemetry.context.propagation.DefaultContextPropagators;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.contrib.auto.config.SpanExporterFactory;
 import io.opentelemetry.sdk.metrics.export.IntervalMetricReader;
@@ -37,6 +40,9 @@ public class TracerInstaller {
   /** Register agent tracer if no agent tracer is already registered. */
   public static synchronized void installAgentTracer() {
     if (Config.get().isTraceEnabled()) {
+
+      OpenTelemetry.setPropagators(
+          DefaultContextPropagators.builder().addHttpTextFormat(new AiHttpTraceContext()).build());
 
       // Try to create an exporter
       final String exporterJar = Config.get().getExporterJar();

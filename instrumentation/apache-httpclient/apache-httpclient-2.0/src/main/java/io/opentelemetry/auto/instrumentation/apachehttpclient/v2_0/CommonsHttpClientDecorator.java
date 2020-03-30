@@ -16,14 +16,18 @@
 package io.opentelemetry.auto.instrumentation.apachehttpclient.v2_0;
 
 import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator;
 import io.opentelemetry.trace.Tracer;
 import java.net.URI;
 import java.net.URISyntaxException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.StatusLine;
 import org.apache.commons.httpclient.URIException;
 
+@Slf4j
 public class CommonsHttpClientDecorator extends HttpClientDecorator<HttpMethod, HttpMethod> {
   public static final CommonsHttpClientDecorator DECORATE = new CommonsHttpClientDecorator();
 
@@ -72,5 +76,11 @@ public class CommonsHttpClientDecorator extends HttpClientDecorator<HttpMethod, 
   protected Integer status(final HttpMethod httpMethod) {
     final StatusLine statusLine = httpMethod.getStatusLine();
     return statusLine == null ? null : statusLine.getStatusCode();
+  }
+
+  @Override
+  protected String getAiAppIdResponseHeader(final HttpMethod httpMethod) {
+    final Header header = httpMethod.getResponseHeader(AiAppId.RESPONSE_HEADER_NAME);
+    return header == null ? null : header.getValue();
   }
 }

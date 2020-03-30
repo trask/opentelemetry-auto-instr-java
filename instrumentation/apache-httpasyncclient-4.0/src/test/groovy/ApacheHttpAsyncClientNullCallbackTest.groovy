@@ -53,4 +53,8 @@ class ApacheHttpAsyncClientNullCallbackTest extends HttpClientTest {
   Integer statusOnRedirectError() {
     return 302
   }
+
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

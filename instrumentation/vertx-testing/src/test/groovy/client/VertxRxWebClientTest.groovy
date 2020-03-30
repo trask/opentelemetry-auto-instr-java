@@ -52,4 +52,9 @@ class VertxRxWebClientTest extends HttpClientTest {
   boolean testConnectionFailure() {
     false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

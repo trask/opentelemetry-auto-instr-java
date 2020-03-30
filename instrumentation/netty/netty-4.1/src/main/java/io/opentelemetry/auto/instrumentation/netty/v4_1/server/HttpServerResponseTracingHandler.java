@@ -21,6 +21,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.HttpResponse;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.instrumentation.api.Tags;
 import io.opentelemetry.auto.instrumentation.netty.v4_1.AttributeKeys;
 import io.opentelemetry.trace.Span;
@@ -36,6 +37,11 @@ public class HttpServerResponseTracingHandler extends ChannelOutboundHandlerAdap
     }
 
     final HttpResponse response = (HttpResponse) msg;
+
+    final String appId = AiAppId.getAppId();
+    if (!appId.isEmpty()) {
+      response.headers().set(AiAppId.RESPONSE_HEADER_NAME, "appId=" + appId);
+    }
 
     try {
       ctx.write(msg, prm);

@@ -48,6 +48,11 @@ import static io.opentelemetry.auto.test.base.HttpServerTest.ServerEndpoint.SUCC
 class Netty41ServerTest extends HttpServerTest<EventLoopGroup> {
 
   @Override
+  boolean sendsBackAiTargetAppId() {
+    true
+  }
+
+  @Override
   EventLoopGroup startServer(int port) {
     def eventLoopGroup = new NioEventLoopGroup()
 

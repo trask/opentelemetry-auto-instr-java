@@ -40,4 +40,8 @@ class OkHttp3Test extends HttpClientTest {
   boolean testRedirects() {
     false
   }
+
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

@@ -15,6 +15,7 @@
  */
 package io.opentelemetry.auto.bootstrap.instrumentation.decorator;
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.MoreTags;
 import io.opentelemetry.auto.instrumentation.api.Tags;
@@ -50,6 +51,12 @@ public abstract class HttpServerDecorator<REQUEST, CONNECTION, RESPONSE> extends
   public Span onRequest(final Span span, final REQUEST request) {
     assert span != null;
     if (request != null) {
+
+      final String sourceAppId = span.getContext().getTraceState().get(AiAppId.TRACESTATE_KEY);
+      if (sourceAppId != null && !sourceAppId.isEmpty()) {
+        span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, sourceAppId);
+      }
+
       span.setAttribute(Tags.HTTP_METHOD, method(request));
 
       // Copy of HttpClientDecorator url handling

@@ -62,6 +62,11 @@ class Netty40ClientTest extends HttpClientTest {
     false
   }
 
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
+
   def "connection error (unopened port)"() {
     given:
     def uri = new URI("http://127.0.0.1:$UNUSABLE_PORT/") // Use numeric address to avoid ipv4/ipv6 confusion

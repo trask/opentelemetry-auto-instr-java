@@ -54,4 +54,9 @@ class PlayWSClientTest extends HttpClientTest {
   boolean testConnectionFailure() {
     false
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

@@ -24,6 +24,7 @@ import static io.opentelemetry.trace.Span.Kind.SERVER;
 import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
 
 import io.opentelemetry.auto.bootstrap.InstrumentationContext;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.instrumentation.api.MoreTags;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.instrumentation.api.Tags;
@@ -87,6 +88,11 @@ public class Servlet3Advice {
     httpServletRequest.setAttribute(SPAN_ATTRIBUTE, span);
     httpServletRequest.setAttribute("traceId", span.getContext().getTraceId().toLowerBase16());
     httpServletRequest.setAttribute("spanId", span.getContext().getSpanId().toLowerBase16());
+
+    final String appId = AiAppId.getAppId();
+    if (!appId.isEmpty()) {
+      ((HttpServletResponse) response).setHeader(AiAppId.RESPONSE_HEADER_NAME, "appId=" + appId);
+    }
 
     return new SpanWithScope(span, currentContextWith(span));
   }

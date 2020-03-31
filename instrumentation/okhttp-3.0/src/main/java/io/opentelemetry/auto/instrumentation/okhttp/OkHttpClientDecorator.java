@@ -15,6 +15,7 @@
  */
 package io.opentelemetry.auto.instrumentation.okhttp;
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator;
 import java.net.URI;
 import okhttp3.Request;
@@ -56,5 +57,10 @@ public class OkHttpClientDecorator extends HttpClientDecorator<Request, Response
   @Override
   protected Integer status(final Response httpResponse) {
     return httpResponse.code();
+  }
+
+  @Override
+  protected String getAiAppIdResponseHeader(final Response httpResponse) {
+    return httpResponse.headers().get(AiAppId.RESPONSE_HEADER_NAME);
   }
 }

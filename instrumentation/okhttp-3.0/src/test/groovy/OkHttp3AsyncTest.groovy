@@ -60,4 +60,8 @@ class OkHttp3AsyncTest extends OkHttp3Test {
     }
     return responseRef.get().code()
   }
+
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

@@ -1,3 +1,7 @@
+plugins {
+  id 'maven-publish'
+}
+
 apply from: "${rootDir}/gradle/java.gradle"
 
 minimumBranchCoverage = 0.6
@@ -38,4 +42,10 @@ dependencies {
   instrumentationMuzzle configurations.compile
 }
 
-
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
+}

@@ -79,6 +79,8 @@ public class Config {
   public static final String EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED =
       "experimental.controller-and-view.spans.enabled";
 
+  public static final String MICROMETER_STEP_MILLIS = "micrometer.step.millis";
+
   private static final boolean DEFAULT_TRACE_ENABLED = true;
   public static final boolean DEFAULT_INTEGRATIONS_ENABLED = true;
 
@@ -97,6 +99,8 @@ public class Config {
   public static final boolean DEFAULT_LOG_INJECTION_ENABLED = false;
   public static final String DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD = null;
   public static final boolean DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED = true;
+
+  public static final int DEFAULT_MICROMETER_STEP_MILLIS = 60000;
 
   private static final String SPLIT_BY_SPACE_OR_COMMA_REGEX = "[,\\s]+";
 
@@ -137,6 +141,8 @@ public class Config {
   @Getter private final String experimentalLogCaptureThreshold;
 
   @Getter private final boolean experimentalControllerAndViewSpansEnabled;
+
+  @Getter private final int micrometerStepMillis;
 
   @Getter private final String traceAnnotations;
 
@@ -202,6 +208,9 @@ public class Config {
         getBooleanSettingFromEnvironment(
             EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
             DEFAULT_EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED);
+
+    micrometerStepMillis =
+        getIntegerSettingFromEnvironment(MICROMETER_STEP_MILLIS, DEFAULT_MICROMETER_STEP_MILLIS);
 
     traceAnnotations = getSettingFromEnvironment(TRACE_ANNOTATIONS, DEFAULT_TRACE_ANNOTATIONS);
 
@@ -271,6 +280,9 @@ public class Config {
             properties,
             EXPERIMENTAL_CONTROLLER_AND_VIEW_SPANS_ENABLED,
             parent.experimentalControllerAndViewSpansEnabled);
+
+    micrometerStepMillis =
+        getPropertyIntegerValue(properties, MICROMETER_STEP_MILLIS, parent.micrometerStepMillis);
 
     traceAnnotations = properties.getProperty(TRACE_ANNOTATIONS, parent.traceAnnotations);
 

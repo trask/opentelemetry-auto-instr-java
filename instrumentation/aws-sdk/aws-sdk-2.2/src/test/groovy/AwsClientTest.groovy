@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator
 import io.opentelemetry.auto.instrumentation.api.MoreTags
 import io.opentelemetry.auto.instrumentation.api.Tags
@@ -129,6 +130,7 @@ class AwsClientTest extends AgentTestRunner {
             "$Tags.HTTP_URL" { it.startsWith("${server.address}${path}") }
             "$Tags.HTTP_METHOD" "$method"
             "$Tags.HTTP_STATUS" 200
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }
@@ -233,6 +235,7 @@ class AwsClientTest extends AgentTestRunner {
             "$Tags.HTTP_URL" { it.startsWith("${server.address}${path}") }
             "$Tags.HTTP_METHOD" "$method"
             "$Tags.HTTP_STATUS" 200
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }

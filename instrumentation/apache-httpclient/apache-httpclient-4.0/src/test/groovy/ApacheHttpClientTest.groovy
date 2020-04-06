@@ -41,6 +41,10 @@ abstract class ApacheHttpClientTest<T extends HttpRequest> extends HttpClientTes
     return response.statusLine.statusCode
   }
 
+  boolean capturesAiTargetAppId() {
+    true
+  }
+
   abstract T createRequest(String method, URI uri)
 
   abstract HttpResponse executeRequest(T request, URI uri)

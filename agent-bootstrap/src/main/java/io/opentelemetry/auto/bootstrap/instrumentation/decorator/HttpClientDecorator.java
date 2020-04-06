@@ -15,6 +15,7 @@
  */
 package io.opentelemetry.auto.bootstrap.instrumentation.decorator;
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.MoreTags;
 import io.opentelemetry.auto.instrumentation.api.Tags;
@@ -38,6 +39,10 @@ public abstract class HttpClientDecorator<REQUEST, RESPONSE> extends ClientDecor
   protected abstract Integer port(REQUEST request);
 
   protected abstract Integer status(RESPONSE response);
+
+  protected String getAiAppIdResponseHeader(final RESPONSE response) {
+    return null;
+  }
 
   @Override
   protected String service() {
@@ -122,7 +127,21 @@ public abstract class HttpClientDecorator<REQUEST, RESPONSE> extends ClientDecor
           span.setStatus(Status.UNKNOWN);
         }
       }
+      final String responseHeader = getAiAppIdResponseHeader(response);
+      setTargetAppId(span, responseHeader);
     }
     return span;
+  }
+
+  public static void setTargetAppId(final Span span, final String responseHeader) {
+    if (responseHeader == null) {
+      return;
+    }
+    final int index = responseHeader.indexOf('=');
+    if (index == -1) {
+      return;
+    }
+    final String targetAppId = responseHeader.substring(index + 1);
+    span.setAttribute(AiAppId.SPAN_TARGET_ATTRIBUTE_NAME, targetAppId);
   }
 }

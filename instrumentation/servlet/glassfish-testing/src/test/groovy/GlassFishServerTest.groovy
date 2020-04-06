@@ -86,6 +86,11 @@ class GlassFishServerTest extends HttpServerTest<GlassFish> {
   }
 
   @Override
+  boolean sendsBackAiTargetAppId() {
+    true
+  }
+
+  @Override
   void serverSpan(TraceAssert trace, int index, String traceID = null, String parentID = null, String method = "GET", ServerEndpoint endpoint = SUCCESS) {
     trace.span(index) {
       operationName expectedOperationName(method)

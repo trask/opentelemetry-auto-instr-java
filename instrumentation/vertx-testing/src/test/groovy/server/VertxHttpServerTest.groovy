@@ -70,6 +70,11 @@ class VertxHttpServerTest extends HttpServerTest<Vertx> {
     false
   }
 
+  @Override
+  boolean sendsBackAiTargetAppId() {
+    true
+  }
+
   static class VertxWebTestServer extends AbstractVerticle {
 
     @Override

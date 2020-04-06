@@ -19,6 +19,7 @@ import io.opentelemetry.auto.config.Config
 import io.opentelemetry.auto.instrumentation.api.MoreTags
 import io.opentelemetry.auto.instrumentation.api.Tags
 import io.opentelemetry.trace.Span
+import io.opentelemetry.trace.SpanContext
 import io.opentelemetry.trace.Status
 
 import static io.opentelemetry.auto.test.utils.ConfigUtils.withConfigOverride
@@ -26,6 +27,10 @@ import static io.opentelemetry.auto.test.utils.ConfigUtils.withConfigOverride
 class HttpServerDecoratorTest extends ServerDecoratorTest {
 
   def span = Mock(Span)
+
+  def setup() {
+
+  }
 
   def "test onRequest"() {
     setup:
@@ -36,6 +41,7 @@ class HttpServerDecoratorTest extends ServerDecoratorTest {
 
     then:
     if (req) {
+      1 * span.getContext() >> SpanContext.getInvalid()
       1 * span.setAttribute(Tags.HTTP_METHOD, "test-method")
       1 * span.setAttribute(Tags.HTTP_URL, url)
     }
@@ -61,6 +67,7 @@ class HttpServerDecoratorTest extends ServerDecoratorTest {
     }
 
     then:
+    1 * span.getContext() >> SpanContext.getInvalid()
     if (expectedUrl) {
       1 * span.setAttribute(Tags.HTTP_URL, expectedUrl)
     }

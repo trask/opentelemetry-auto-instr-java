@@ -20,6 +20,7 @@ import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator;
 import io.opentelemetry.trace.Tracer;
 import java.net.URI;
@@ -85,5 +86,10 @@ public class NettyHttpClientDecorator extends HttpClientDecorator<HttpRequest, H
   @Override
   protected Integer status(final HttpResponse httpResponse) {
     return httpResponse.status().code();
+  }
+
+  @Override
+  protected String getAiAppIdResponseHeader(final HttpResponse httpResponse) {
+    return httpResponse.headers().get(AiAppId.RESPONSE_HEADER_NAME);
   }
 }

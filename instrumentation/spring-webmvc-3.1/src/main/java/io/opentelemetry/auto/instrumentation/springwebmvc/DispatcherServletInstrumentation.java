@@ -26,6 +26,7 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
 import com.google.auto.service.AutoService;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -43,6 +44,11 @@ public final class DispatcherServletInstrumentation extends Instrumenter.Default
 
   public DispatcherServletInstrumentation() {
     super("spring-webmvc");
+  }
+
+  @Override
+  protected boolean defaultEnabled() {
+    return Config.get().isExperimentalControllerAndViewSpansEnabled();
   }
 
   @Override

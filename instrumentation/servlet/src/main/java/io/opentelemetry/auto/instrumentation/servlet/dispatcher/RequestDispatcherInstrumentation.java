@@ -29,6 +29,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
 import io.opentelemetry.auto.bootstrap.InstrumentationContext;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -89,26 +90,34 @@ public final class RequestDispatcherInstrumentation extends Instrumenter.Default
         @Advice.This final RequestDispatcher dispatcher,
         @Advice.Local("_originalServletSpan") Object originalServletSpan,
         @Advice.Argument(0) final ServletRequest request) {
-      if (!TRACER.getCurrentSpan().getContext().isValid()) {
-        // Don't want to generate a new top-level span
+      final Span parentSpan = TRACER.getCurrentSpan();
+      if (!parentSpan.getContext().isValid()) {
+        // Don't want to generate a new top-level span, and nothing to propagate via SPAN_ATTRIBUTE
         return null;
       }
 
-      final Span span = TRACER.spanBuilder("servlet." + method).startSpan();
-      DECORATE.afterStart(span);
+      Span span = null;
+      if (Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+        span = TRACER.spanBuilder("servlet." + method).startSpan();
+        DECORATE.afterStart(span);
 
-      final String target =
-          InstrumentationContext.get(RequestDispatcher.class, String.class).get(dispatcher);
-      span.setAttribute("dispatcher.target", target);
+        final String target =
+            InstrumentationContext.get(RequestDispatcher.class, String.class).get(dispatcher);
+        span.setAttribute("dispatcher.target", target);
+      }
 
       // save the original servlet span before overwriting the request attribute, so that it can be
       // restored on method exit
       originalServletSpan = request.getAttribute(SPAN_ATTRIBUTE);
 
-      // this tells the dispatched servlet to use the current span as the parent for its work
-      request.setAttribute(SPAN_ATTRIBUTE, span);
-
-      return new SpanWithScope(span, currentContextWith(span));
+      // this tells the dispatched servlet what to use as the parent for its work
+      if (span != null) {
+        request.setAttribute(SPAN_ATTRIBUTE, span);
+        return new SpanWithScope(span, currentContextWith(span));
+      } else {
+        request.setAttribute(SPAN_ATTRIBUTE, parentSpan);
+        return null;
+      }
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)

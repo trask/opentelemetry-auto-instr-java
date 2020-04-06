@@ -26,12 +26,12 @@ public class DefaultExporterConfig implements io.opentelemetry.sdk.contrib.auto.
 
   @Override
   public String getString(final String key, final String defaultValue) {
-    return Config.getSettingFromEnvironment(prefix + "." + key, defaultValue);
+    return Config.get().getSettingFromEnvironment(prefix + "." + key, defaultValue);
   }
 
   @Override
   public int getInt(final String key, final int defaultValue) {
-    final String s = Config.getSettingFromEnvironment(prefix + "." + key, null);
+    final String s = Config.get().getSettingFromEnvironment(prefix + "." + key, null);
     if (s == null) {
       return defaultValue;
     }
@@ -40,7 +40,7 @@ public class DefaultExporterConfig implements io.opentelemetry.sdk.contrib.auto.
 
   @Override
   public long getLong(final String key, final long defaultValue) {
-    final String s = Config.getSettingFromEnvironment(prefix + "." + key, null);
+    final String s = Config.get().getSettingFromEnvironment(prefix + "." + key, null);
     if (s == null) {
       return defaultValue;
     }
@@ -49,7 +49,7 @@ public class DefaultExporterConfig implements io.opentelemetry.sdk.contrib.auto.
 
   @Override
   public boolean getBoolean(final String key, final boolean defaultValue) {
-    final String s = Config.getSettingFromEnvironment(prefix + "." + key, null);
+    final String s = Config.get().getSettingFromEnvironment(prefix + "." + key, null);
     if (s == null) {
       return defaultValue;
     }
@@ -58,7 +58,7 @@ public class DefaultExporterConfig implements io.opentelemetry.sdk.contrib.auto.
 
   @Override
   public double getDouble(final String key, final double defaultValue) {
-    final String s = Config.getSettingFromEnvironment(prefix + "." + key, null);
+    final String s = Config.get().getSettingFromEnvironment(prefix + "." + key, null);
     if (s == null) {
       return defaultValue;
     }

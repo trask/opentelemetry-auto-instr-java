@@ -49,7 +49,22 @@ public class Agent {
   static {
     // We can configure logger here because io.opentelemetry.auto.AgentBootstrap doesn't touch
     // it.
-    configureLogger();
+    Class<?> clazz = null;
+    try {
+      clazz = Class.forName("io.opentelemetry.auto.bootstrap.ConfigureLogging");
+    } catch (final ClassNotFoundException e) {
+    }
+    if (clazz != null) {
+      // exceptions in this code should be propagated up so that agent startup fails
+      try {
+        final Method method = clazz.getMethod("configure");
+        method.invoke(null);
+      } catch (final Exception e) {
+        throw new IllegalStateException(e);
+      }
+    } else {
+      configureLogger();
+    }
     log = LoggerFactory.getLogger(Agent.class);
   }
 
@@ -161,8 +176,9 @@ public class Agent {
         final Class<?> agentInstallerClass =
             agentClassLoader.loadClass("io.opentelemetry.auto.tooling.AgentInstaller");
         final Method agentInstallerMethod =
-            agentInstallerClass.getMethod("installBytebuddyAgent", Instrumentation.class);
-        agentInstallerMethod.invoke(null, inst);
+            agentInstallerClass.getMethod(
+                "installBytebuddyAgent", Instrumentation.class, URL.class);
+        agentInstallerMethod.invoke(null, inst, bootstrapURL);
         AGENT_CLASSLOADER = agentClassLoader;
       } catch (final Throwable ex) {
         log.error("Throwable thrown while installing the agent", ex);

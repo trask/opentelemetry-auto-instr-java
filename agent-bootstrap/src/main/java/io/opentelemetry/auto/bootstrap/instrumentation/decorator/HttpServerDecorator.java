@@ -23,12 +23,19 @@ import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public abstract class HttpServerDecorator<REQUEST, CONNECTION, RESPONSE> extends ServerDecorator {
   public static final String SPAN_ATTRIBUTE = "io.opentelemetry.auto.span";
   public static final String DEFAULT_SPAN_NAME = "HTTP request";
+
+  protected static final String AI_REQUEST_CONTEXT_HEADER_NAME = "Request-Context";
+
+  private static final boolean AI_BACK_COMPAT = true;
+  private static final String AI_REQUEST_CONTEXT_HEADER_APPID_KEY = "appId";
 
   protected abstract String method(REQUEST request);
 
@@ -39,6 +46,10 @@ public abstract class HttpServerDecorator<REQUEST, CONNECTION, RESPONSE> extends
   protected abstract Integer peerPort(CONNECTION connection);
 
   protected abstract Integer status(RESPONSE response);
+
+  protected String aiRequestContext(final REQUEST request) {
+    return null;
+  }
 
   public String spanNameForRequest(final REQUEST request) {
     if (request == null) {
@@ -51,10 +62,18 @@ public abstract class HttpServerDecorator<REQUEST, CONNECTION, RESPONSE> extends
   public Span onRequest(final Span span, final REQUEST request) {
     assert span != null;
     if (request != null) {
-
       final String sourceAppId = span.getContext().getTraceState().get(AiAppId.TRACESTATE_KEY);
       if (sourceAppId != null && !sourceAppId.isEmpty()) {
         span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, sourceAppId);
+      } else if (AI_BACK_COMPAT) {
+        final String aiRequestContext = aiRequestContext(request);
+        if (aiRequestContext != null) {
+          final Map<String, String> map = toMap(aiRequestContext);
+          final String backCompatSourceAppId = map.get(AI_REQUEST_CONTEXT_HEADER_APPID_KEY);
+          if (backCompatSourceAppId != null && !backCompatSourceAppId.isEmpty()) {
+            span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, backCompatSourceAppId);
+          }
+        }
       }
 
       span.setAttribute(Tags.HTTP_METHOD, method(request));
@@ -131,6 +150,20 @@ public abstract class HttpServerDecorator<REQUEST, CONNECTION, RESPONSE> extends
       }
     }
     return span;
+  }
+
+  private static Map<String, String> toMap(final String str) {
+    final Map<String, String> result = new HashMap<>();
+    final String[] pairs = str.split(",");
+    for (final String pair : pairs) {
+      final String[] keyValuePair = pair.trim().split("=");
+      if (keyValuePair.length == 2) {
+        final String key = keyValuePair[0].trim();
+        final String value = keyValuePair[1].trim();
+        result.put(key, value);
+      }
+    }
+    return result;
   }
 
   //  @Override

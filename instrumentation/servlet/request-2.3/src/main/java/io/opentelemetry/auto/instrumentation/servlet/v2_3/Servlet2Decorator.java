@@ -74,6 +74,11 @@ public class Servlet2Decorator
   }
 
   @Override
+  protected String aiRequestContext(final HttpServletRequest request) {
+    return request.getHeader(AI_REQUEST_CONTEXT_HEADER_NAME);
+  }
+
+  @Override
   public Span onRequest(final Span span, final HttpServletRequest request) {
     assert span != null;
     if (request != null) {

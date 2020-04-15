@@ -67,8 +67,9 @@ public class AgentBootstrap {
 
       final Class<?> agentClass =
           ClassLoader.getSystemClassLoader().loadClass("io.opentelemetry.auto.bootstrap.Agent");
-      final Method startMethod = agentClass.getMethod("start", Instrumentation.class, URL.class);
-      startMethod.invoke(null, inst, bootstrapURL);
+      final Method startMethod =
+          agentClass.getMethod("start", Instrumentation.class, URL.class, boolean.class);
+      startMethod.invoke(null, inst, bootstrapURL, true);
     } catch (final Throwable ex) {
       // Don't rethrow.  We don't have a log manager here, so just print.
       ex.printStackTrace();

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -215,8 +216,9 @@ public class Config {
         getBooleanSettingFromEnvironment(LOG_INJECTION_ENABLED, DEFAULT_LOG_INJECTION_ENABLED);
 
     experimentalLogCaptureThreshold =
-        getSettingFromEnvironment(
-            EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD);
+        toUpper(
+            getSettingFromEnvironment(
+                EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD));
 
     experimentalControllerAndViewSpansEnabled =
         getBooleanSettingFromEnvironment(
@@ -294,8 +296,9 @@ public class Config {
         getPropertyBooleanValue(properties, LOG_INJECTION_ENABLED, DEFAULT_LOG_INJECTION_ENABLED);
 
     experimentalLogCaptureThreshold =
-        properties.getProperty(
-            EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD);
+        toUpper(
+            properties.getProperty(
+                EXPERIMENTAL_LOG_CAPTURE_THRESHOLD, DEFAULT_EXPERIMENTAL_LOG_CAPTURE_THRESHOLD));
 
     experimentalControllerAndViewSpansEnabled =
         getPropertyBooleanValue(
@@ -702,6 +705,10 @@ public class Config {
     }
 
     return properties;
+  }
+
+  private static String toUpper(final String str) {
+    return str == null ? null : str.toUpperCase(Locale.ENGLISH);
   }
 
   // This has to be placed after all other static fields to give them a chance to initialize

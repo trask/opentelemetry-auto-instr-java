@@ -118,6 +118,10 @@ public class AdditionalLibraryIgnoresMatcher<T extends TypeDescription>
                 "org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedWebappClassLoader")) {
           return false;
         }
+        // Spring boot actuator / micrometer instrumentation
+        if (name.equals("org.springframework.boot.autoconfigure.AutoConfigurationImportSelector")) {
+          return false;
+        }
         return true;
       }
 

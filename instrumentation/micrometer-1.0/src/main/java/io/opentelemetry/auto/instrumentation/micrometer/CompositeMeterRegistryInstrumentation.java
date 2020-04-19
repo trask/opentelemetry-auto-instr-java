@@ -22,6 +22,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
+import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import java.util.Map;
@@ -43,6 +44,16 @@ public final class CompositeMeterRegistryInstrumentation extends Instrumenter.De
   }
 
   @Override
+  public String[] helperClassNames() {
+    return new String[] {
+      packageName + ".AzureMonitorMeterRegistry",
+      packageName + ".AzureMonitorNamingConvention",
+      packageName + ".AzureMonitorRegistryConfig",
+      packageName + ".DaemonThreadFactory"
+    };
+  }
+
+  @Override
   public Map<? extends ElementMatcher<? super MethodDescription>, String> transformers() {
     return singletonMap(
         isMethod()
@@ -60,6 +71,12 @@ public final class CompositeMeterRegistryInstrumentation extends Instrumenter.De
           .getClass()
           .getName()
           .equals("io.micrometer.azuremonitor.AzureMonitorMeterRegistry");
+    }
+
+    // this is to make muzzle think that AzureMonitorMeterRegistry is needed so that this
+    // instrumentation is not applied when MetricsInstrumentation would not also be applied
+    public static Object muzzleCheck() {
+      return new AzureMonitorMeterRegistry(Clock.SYSTEM);
     }
   }
 }

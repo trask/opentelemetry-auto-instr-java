@@ -16,35 +16,39 @@
 package io.opentelemetry.auto.instrumentation.micrometer;
 
 import static java.util.Collections.singletonMap;
-import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
+import static net.bytebuddy.matcher.ElementMatchers.returns;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
-import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.auto.bootstrap.Agent;
 import io.opentelemetry.auto.tooling.Instrumenter;
+import java.io.InputStream;
 import java.util.Map;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import org.springframework.core.io.ClassPathResource;
 
+// TODO consider applying this instrumentation more generally on ClassLoaders
+// TODO cannot test this currently since AGENT_CLASSLOADER is not set in AgentTestRunner
 @AutoService(Instrumenter.class)
-public final class CompositeMeterRegistryInstrumentation extends Instrumenter.Default {
+public final class ClassPathResourceInstrumentation extends Instrumenter.Default {
 
-  public CompositeMeterRegistryInstrumentation() {
-    super("micrometer");
+  public ClassPathResourceInstrumentation() {
+    super("micrometer-actuator");
   }
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
-    return named("io.micrometer.core.instrument.composite.CompositeMeterRegistry");
+    return named("org.springframework.core.io.ClassPathResource");
   }
 
   @Override
   public String[] helperClassNames() {
     return new String[] {
+      packageName + ".AzureMonitorAutoConfiguration",
       packageName + ".AzureMonitorMeterRegistry",
       packageName + ".AzureMonitorNamingConvention",
       packageName + ".AzureMonitorRegistryConfig",
@@ -55,27 +59,31 @@ public final class CompositeMeterRegistryInstrumentation extends Instrumenter.De
   @Override
   public Map<? extends ElementMatcher<? super MethodDescription>, String> transformers() {
     return singletonMap(
-        isMethod()
-            .and(named("add"))
-            .and(takesArguments(1))
-            .and(takesArgument(0, named("io.micrometer.core.instrument.MeterRegistry"))),
-        CompositeMeterRegistryInstrumentation.class.getName() + "$AddAdvice");
+        named("getInputStream").and(takesArguments(0)).and(returns(InputStream.class)),
+        ClassPathResourceInstrumentation.class.getName() + "$GetInputStreamAdvice");
   }
 
-  public static class AddAdvice {
-
-    @Advice.OnMethodEnter(suppress = Throwable.class, skipOn = Advice.OnNonDefaultValue.class)
-    public static boolean onEnter(@Advice.Argument(0) final MeterRegistry registry) {
-      return registry
-          .getClass()
-          .getName()
-          .equals("io.micrometer.azuremonitor.AzureMonitorMeterRegistry");
+  public static class GetInputStreamAdvice {
+    @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
+    public static InputStream onEnter(@Advice.This final ClassPathResource resource) {
+      if ("io/opentelemetry/auto/instrumentation/micrometer/AzureMonitorAutoConfiguration.class"
+          .equals(resource.getPath())) {
+        if (Agent.AGENT_CLASSLOADER != null) {
+          return Agent.AGENT_CLASSLOADER.getResourceAsStream(
+              "io/opentelemetry/auto/instrumentation/micrometer/AzureMonitorAutoConfiguration.class");
+        }
+      }
+      return null;
     }
 
-    // this is to make muzzle think that AzureMonitorMeterRegistry is needed so that this
-    // instrumentation is not applied when MetricsInstrumentation would not also be applied
-    public static Object muzzleCheck() {
-      return AzureMonitorMeterRegistry.INSTANCE;
+    @Advice.OnMethodExit(onThrowable = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) InputStream result,
+        @Advice.Enter final InputStream resultFromAgentLoader) {
+
+      if (resultFromAgentLoader != null) {
+        result = resultFromAgentLoader;
+      }
     }
   }
 }

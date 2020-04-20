@@ -69,7 +69,7 @@ public class Agent {
   }
 
   // fields must be managed under class lock
-  private static ClassLoader AGENT_CLASSLOADER = null;
+  public static ClassLoader AGENT_CLASSLOADER = null;
 
   public static void start(
       final Instrumentation inst, final URL bootstrapURL, final boolean catchAndLogException)

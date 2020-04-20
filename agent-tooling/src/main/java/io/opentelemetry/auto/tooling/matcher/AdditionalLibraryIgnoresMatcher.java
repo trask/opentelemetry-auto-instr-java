@@ -118,6 +118,10 @@ public class AdditionalLibraryIgnoresMatcher<T extends TypeDescription>
                 "org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedWebappClassLoader")) {
           return false;
         }
+        // Spring boot actuator / micrometer instrumentation
+        if (name.equals("org.springframework.boot.autoconfigure.AutoConfigurationImportSelector")) {
+          return false;
+        }
         return true;
       }
 
@@ -144,6 +148,10 @@ public class AdditionalLibraryIgnoresMatcher<T extends TypeDescription>
         if (name.startsWith("org.springframework.core.task.")
             || name.equals("org.springframework.core.DecoratingClassLoader")
             || name.equals("org.springframework.core.OverridingClassLoader")) {
+          return false;
+        }
+        // Spring boot actuator / micrometer instrumentation
+        if (name.equals("org.springframework.core.io.ClassPathResource")) {
           return false;
         }
         return true;

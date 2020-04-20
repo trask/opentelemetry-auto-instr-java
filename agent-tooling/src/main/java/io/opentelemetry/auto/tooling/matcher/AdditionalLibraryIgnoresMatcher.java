@@ -150,6 +150,10 @@ public class AdditionalLibraryIgnoresMatcher<T extends TypeDescription>
             || name.equals("org.springframework.core.OverridingClassLoader")) {
           return false;
         }
+        // Spring boot actuator / micrometer instrumentation
+        if (name.equals("org.springframework.core.io.ClassPathResource")) {
+          return false;
+        }
         return true;
       }
 

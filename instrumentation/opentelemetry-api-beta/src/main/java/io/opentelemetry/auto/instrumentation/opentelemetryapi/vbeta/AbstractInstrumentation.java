@@ -15,14 +15,22 @@
  */
 package io.opentelemetry.auto.instrumentation.opentelemetryapi.vbeta;
 
+import static io.opentelemetry.auto.tooling.ClassLoaderMatcher.hasClassesNamed;
 import static java.util.Collections.singletonMap;
 
 import io.opentelemetry.auto.tooling.Instrumenter;
 import java.util.Map;
+import net.bytebuddy.matcher.ElementMatcher;
 
 public abstract class AbstractInstrumentation extends Instrumenter.Default {
   public AbstractInstrumentation() {
     super("opentelemetry-api");
+  }
+
+  @Override
+  public ElementMatcher<ClassLoader> classLoaderMatcher() {
+    // this class was introduced in OpenTelemetry API 0.5
+    return hasClassesNamed("unshaded.io.opentelemetry.metrics.LongUpDownSumObserver");
   }
 
   @Override

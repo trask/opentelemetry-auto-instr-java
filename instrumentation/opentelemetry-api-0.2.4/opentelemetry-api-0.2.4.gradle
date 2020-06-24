@@ -1,4 +1,4 @@
-apply from: "$rootDir/gradle/instrumentation.gradle"
+apply from: "${rootDir}/gradle/instrumentation.gradle"
 
 dependencies {
   // this instrumentation needs to be able to be able to reference both the OpenTelemetry API
@@ -19,13 +19,13 @@ dependencies {
   //
   // and in the code "io.opentelemetry.*" refers to the (shaded) OpenTelemetry API that is in the
   // bootstrap class loader (as those references will later be shaded)
-  compileOnly project(path: ':opentelemetry-api-beta-shaded-for-instrumenting', configuration: 'shadow')
+  compileOnly project(path: ':opentelemetry-api-0.2.4-shaded-for-instrumenting', configuration: 'shadow')
 
-  testCompile project(path: ':opentelemetry-api-beta-shaded-for-instrumenting', configuration: 'shadow')
+  testCompile project(path: ':opentelemetry-api-0.2.4-shaded-for-instrumenting', configuration: 'shadow')
 
   // Added to ensure cross compatibility:
   testCompile project(':instrumentation:opentelemetry-api-0.2.0')
-  testCompile project(':instrumentation:opentelemetry-api-0.2.4')
   testCompile project(':instrumentation:opentelemetry-api-0.3')
   testCompile project(':instrumentation:opentelemetry-api-0.4')
+  testCompile project(':instrumentation:opentelemetry-api-beta')
 }

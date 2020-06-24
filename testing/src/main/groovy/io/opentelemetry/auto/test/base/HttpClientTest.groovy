@@ -15,6 +15,7 @@
  */
 package io.opentelemetry.auto.test.base
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.HttpClientDecorator
 import io.opentelemetry.auto.config.Config
 import io.opentelemetry.auto.instrumentation.api.MoreTags
@@ -375,6 +376,7 @@ abstract class HttpClientTest extends AgentTestRunner {
 
   // parent span must be cast otherwise it breaks debugging classloading (junit loads it early)
   void clientSpan(TraceAssert trace, int index, Object parentSpan, String method = "GET", boolean tagQueryString = false, URI uri = server.address.resolve("/success"), Integer status = 200, Throwable exception = null) {
+    def capturesAiTargetAppId = capturesAiTargetAppId()
     trace.span(index) {
       if (parentSpan == null) {
         parent()
@@ -399,6 +401,9 @@ abstract class HttpClientTest extends AgentTestRunner {
         }
         if (exception) {
           errorTags(exception.class, exception.message)
+        }
+        if (capturesAiTargetAppId && !exception && uri.host != "www.google.com") {
+          "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
         }
       }
     }
@@ -447,6 +452,10 @@ abstract class HttpClientTest extends AgentTestRunner {
     // FIXME: this hack is here because callback with parent is broken in play-ws when the stream()
     // function is used.  There is no way to stop a test from a derived class hence the flag
     true
+  }
+
+  boolean capturesAiTargetAppId() {
+    false
   }
 
   URI removeFragment(URI uri) {

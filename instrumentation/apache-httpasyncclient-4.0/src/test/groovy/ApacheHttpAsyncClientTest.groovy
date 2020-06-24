@@ -86,4 +86,9 @@ class ApacheHttpAsyncClientTest extends HttpClientTest {
   boolean testRemoteConnection() {
     false // otherwise SocketTimeoutException for https requests
   }
+
+  @Override
+  boolean capturesAiTargetAppId() {
+    true
+  }
 }

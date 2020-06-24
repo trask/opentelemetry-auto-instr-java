@@ -15,6 +15,7 @@
  */
 package client
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.instrumentation.api.MoreTags
 import io.opentelemetry.auto.instrumentation.api.Tags
 import io.opentelemetry.auto.test.asserts.TraceAssert
@@ -68,6 +69,9 @@ class SpringWebfluxHttpClientTest extends HttpClientTest {
           }
           if (exception) {
             errorTags(exception.class, exception.message)
+          }
+          if (!exception && uri.host != "www.google.com") {
+            "$AiAppId.SPAN_TARGET_ATTRIBUTE_NAME" AiAppId.getAppId()
           }
         }
       }

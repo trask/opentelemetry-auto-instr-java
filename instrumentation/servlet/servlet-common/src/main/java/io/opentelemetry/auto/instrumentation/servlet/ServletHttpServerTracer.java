@@ -106,4 +106,9 @@ public abstract class ServletHttpServerTracer extends HttpServerTracer<HttpServl
       span.setAttribute(MoreTags.USER_NAME, principal.getName());
     }
   }
+
+  @Override
+  protected String aiRequestContext(final HttpServletRequest request) {
+    return request.getHeader(AI_REQUEST_CONTEXT_HEADER_NAME);
+  }
 }

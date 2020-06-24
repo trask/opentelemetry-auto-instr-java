@@ -27,6 +27,8 @@ import io.opentelemetry.auto.bootstrap.instrumentation.SafeServiceLoader;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.tooling.context.FieldBackedProvider;
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,24 +57,8 @@ public class AgentInstaller {
     AgentTooling.registerWeakMapProvider();
   }
 
-  public static void installBytebuddyAgent(final Instrumentation inst) {
-    if (Config.get().isTraceEnabled()) {
-      installBytebuddyAgent(inst, false, new AgentBuilder.Listener[0]);
-    } else {
-      log.debug("Tracing is disabled, not installing instrumentations.");
-    }
-  }
-
-  /**
-   * Install the core bytebuddy agent along with all implementations of {@link Instrumenter}.
-   *
-   * @param inst Java Instrumentation used to install bytebuddy
-   * @return the agent's class transformer
-   */
-  public static ResettableClassFileTransformer installBytebuddyAgent(
-      final Instrumentation inst,
-      final boolean skipAdditionalLibraryMatcher,
-      final AgentBuilder.Listener... listeners) {
+  public static void installBytebuddyAgent(final Instrumentation inst, final URL bootstrapURL)
+      throws Exception {
 
     final ClassLoader savedContextClassLoader = Thread.currentThread().getContextClassLoader();
     try {
@@ -90,6 +76,37 @@ public class AgentInstaller {
     } finally {
       Thread.currentThread().setContextClassLoader(savedContextClassLoader);
     }
+
+    Class<?> clazz = null;
+    try {
+      clazz = Class.forName("io.opentelemetry.auto.tooling.BeforeAgentInstaller");
+    } catch (final ClassNotFoundException e) {
+    }
+    if (clazz != null) {
+      // exceptions in this code should be propagated up so that agent startup fails
+      final Method method =
+          clazz.getMethod("beforeInstallBytebuddyAgent", Instrumentation.class, URL.class);
+      method.invoke(null, inst, bootstrapURL);
+    }
+
+    if (Config.get().isTraceEnabled()) {
+      installBytebuddyAgent(inst, false);
+    } else {
+      log.debug("Tracing is disabled, not installing instrumentations.");
+    }
+  }
+
+  /**
+   * Install the core bytebuddy agent along with all implementations of {@link Instrumenter}.
+   *
+   * @param inst Java Instrumentation used to install bytebuddy
+   * @return the agent's class transformer
+   */
+  // only used by tests
+  public static ResettableClassFileTransformer installBytebuddyAgent(
+      final Instrumentation inst,
+      final boolean skipAdditionalLibraryMatcher,
+      final AgentBuilder.Listener... listeners) {
 
     INSTRUMENTATION = inst;
 

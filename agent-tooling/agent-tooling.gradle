@@ -1,3 +1,7 @@
+plugins {
+  id 'maven-publish'
+}
+
 apply from: "$rootDir/gradle/java.gradle"
 
 // TODO this is not the desired state, only reflects current reality
@@ -30,3 +34,10 @@ dependencies {
   instrumentationMuzzle configurations.compile
 }
 
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
+}

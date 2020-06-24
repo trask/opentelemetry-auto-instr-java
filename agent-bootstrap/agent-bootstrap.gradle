@@ -1,6 +1,7 @@
 // The shadowJar of this project will be injected into the JVM's bootstrap classloader
 plugins {
   id "com.github.johnrengelman.shadow"
+  id "maven-publish"
 }
 
 apply from: "$rootDir/gradle/java.gradle"
@@ -20,4 +21,12 @@ dependencies {
   testCompile project(':testing')
   testCompile group: 'org.mockito', name: 'mockito-core', version: '2.19.0'
   testCompile group: 'org.assertj', name: 'assertj-core', version: '1.7.1'
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
 }

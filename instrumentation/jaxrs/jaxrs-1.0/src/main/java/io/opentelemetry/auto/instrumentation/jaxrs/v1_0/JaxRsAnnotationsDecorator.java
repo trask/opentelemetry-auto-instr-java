@@ -43,6 +43,11 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
     final String spanName = getPathSpanName(target, method);
     updateParent(parent, spanName);
 
+    if (span == null) {
+      // experimental.controller-and-view.spans.enabled is false
+      return;
+    }
+
     // When jax-rs is the root, we want to name using the path, otherwise use the class/method.
     final boolean isRootScope = !parent.getContext().isValid();
     if (isRootScope && !spanName.isEmpty()) {

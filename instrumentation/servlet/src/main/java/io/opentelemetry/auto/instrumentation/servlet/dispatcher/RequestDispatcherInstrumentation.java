@@ -29,6 +29,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import com.google.auto.service.AutoService;
 import io.opentelemetry.auto.bootstrap.InstrumentationContext;
+import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.SpanWithScope;
 import io.opentelemetry.auto.tooling.Instrumenter;
 import io.opentelemetry.trace.Span;
@@ -113,15 +114,20 @@ public final class RequestDispatcherInstrumentation extends Instrumenter.Default
         parent = servletSpan;
       }
 
-      final String target =
-          InstrumentationContext.get(RequestDispatcher.class, String.class).get(dispatcher);
-      final Span span =
-          TRACER
-              .spanBuilder("servlet." + method)
-              .setParent(parent)
-              .setAttribute("dispatcher.target", target)
-              .startSpan();
-      DECORATE.afterStart(span);
+      final Span span;
+      if (Config.get().isExperimentalControllerAndViewSpansEnabled()) {
+        final String target =
+            InstrumentationContext.get(RequestDispatcher.class, String.class).get(dispatcher);
+        span =
+            TRACER
+                .spanBuilder("servlet." + method)
+                .setParent(parent)
+                .setAttribute("dispatcher.target", target)
+                .startSpan();
+        DECORATE.afterStart(span);
+      } else {
+        span = parent;
+      }
 
       // save the original servlet span before overwriting the request attribute, so that it can be
       // restored on method exit

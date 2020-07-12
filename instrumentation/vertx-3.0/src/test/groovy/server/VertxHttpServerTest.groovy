@@ -76,6 +76,11 @@ class VertxHttpServerTest extends HttpServerTest<Vertx> {
   }
 
   @Override
+  boolean sendsBackAiTargetAppId() {
+    true
+  }
+
+  @Override
   String expectedOperationName(String method, ServerEndpoint endpoint) {
     return endpoint == PATH_PARAM ? "/path/:id/param" : endpoint.getPath()
   }

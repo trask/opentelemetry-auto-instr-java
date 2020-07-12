@@ -16,6 +16,7 @@
 
 package io.opentelemetry.auto.bootstrap.instrumentation.decorator;
 
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId;
 import io.opentelemetry.auto.config.Config;
 import io.opentelemetry.auto.instrumentation.api.MoreAttributes;
 import io.opentelemetry.trace.Span;
@@ -125,7 +126,21 @@ public abstract class HttpClientDecorator<REQUEST, RESPONSE> extends ClientDecor
         span.setAttribute(SemanticAttributes.HTTP_STATUS_CODE.key(), status);
         span.setStatus(HttpStatusConverter.statusFromHttpStatus(status));
       }
+      final String responseHeader = responseHeader(response, AiAppId.RESPONSE_HEADER_NAME);
+      setTargetAppId(span, responseHeader);
     }
     return span;
+  }
+
+  private static void setTargetAppId(final Span span, final String responseHeader) {
+    if (responseHeader == null) {
+      return;
+    }
+    final int index = responseHeader.indexOf('=');
+    if (index == -1) {
+      return;
+    }
+    final String targetAppId = responseHeader.substring(index + 1);
+    span.setAttribute(AiAppId.SPAN_TARGET_ATTRIBUTE_NAME, targetAppId);
   }
 }

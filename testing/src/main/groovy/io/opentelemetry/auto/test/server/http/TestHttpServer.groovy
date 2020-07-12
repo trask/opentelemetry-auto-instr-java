@@ -17,6 +17,7 @@
 package io.opentelemetry.auto.test.server.http
 
 import io.opentelemetry.OpenTelemetry
+import io.opentelemetry.auto.bootstrap.instrumentation.aiappid.AiAppId
 import io.opentelemetry.auto.bootstrap.instrumentation.decorator.BaseDecorator
 import io.opentelemetry.auto.test.asserts.InMemoryExporterAssert
 import io.opentelemetry.auto.test.asserts.TraceAssert
@@ -318,6 +319,7 @@ class TestHttpServer implements AutoCloseable {
 
         send()
         resp.setContentLength(body.bytes.length)
+        resp.setHeader("Request-Context", "appId=" + AiAppId.getAppId())
         resp.writer.print(body)
       }
     }

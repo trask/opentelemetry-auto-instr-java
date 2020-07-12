@@ -38,6 +38,8 @@ import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,6 +50,11 @@ public abstract class HttpServerTracer<REQUEST, CONNECTION, STORAGE> {
   // Keeps track of the server span for the current trace.
   private static final Context.Key<Span> CONTEXT_SERVER_SPAN_KEY =
       Context.key("opentelemetry-trace-server-span-key");
+
+  protected static final String AI_REQUEST_CONTEXT_HEADER_NAME = "Request-Context";
+
+  private static final boolean AI_BACK_COMPAT = true;
+  private static final String AI_REQUEST_CONTEXT_HEADER_APPID_KEY = "appId";
 
   protected final Tracer tracer;
 
@@ -100,6 +107,15 @@ public abstract class HttpServerTracer<REQUEST, CONNECTION, STORAGE> {
     final String sourceAppId = span.getContext().getTraceState().get(AiAppId.TRACESTATE_KEY);
     if (sourceAppId != null && !sourceAppId.isEmpty()) {
       span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, sourceAppId);
+    } else if (AI_BACK_COMPAT) {
+      final String aiRequestContext = aiRequestContext(request);
+      if (aiRequestContext != null) {
+        final Map<String, String> map = toMap(aiRequestContext);
+        final String backCompatSourceAppId = map.get(AI_REQUEST_CONTEXT_HEADER_APPID_KEY);
+        if (backCompatSourceAppId != null && !backCompatSourceAppId.isEmpty()) {
+          span.setAttribute(AiAppId.SPAN_SOURCE_ATTRIBUTE_NAME, backCompatSourceAppId);
+        }
+      }
     }
 
     SemanticAttributes.HTTP_METHOD.set(span, method(request));
@@ -274,4 +290,22 @@ public abstract class HttpServerTracer<REQUEST, CONNECTION, STORAGE> {
    * <p>May be null.
    */
   public abstract Context getServerContext(STORAGE storage);
+
+  protected String aiRequestContext(final REQUEST request) {
+    return null;
+  }
+
+  private static Map<String, String> toMap(final String str) {
+    final Map<String, String> result = new HashMap<>();
+    final String[] pairs = str.split(",");
+    for (final String pair : pairs) {
+      final String[] keyValuePair = pair.trim().split("=");
+      if (keyValuePair.length == 2) {
+        final String key = keyValuePair[0].trim();
+        final String value = keyValuePair[1].trim();
+        result.put(key, value);
+      }
+    }
+    return result;
+  }
 }

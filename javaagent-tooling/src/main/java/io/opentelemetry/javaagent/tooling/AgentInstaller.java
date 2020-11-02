@@ -76,6 +76,9 @@ public class AgentInstaller {
       Thread.currentThread().setContextClassLoader(savedContextClassLoader);
     }
 
+    // this needs to be called before AgentTooling class is initialized
+    addByteBuddyRawSetting();
+
     // WeakMap is used by other classes below, so we need to register the provider first.
     AgentTooling.registerWeakMapProvider();
   }
@@ -120,8 +123,6 @@ public class AgentInstaller {
             OpenTelemetrySdk.getGlobalTracerManagement().forceFlush().join(timeout, unit));
 
     INSTRUMENTATION = inst;
-
-    addByteBuddyRawSetting();
 
     FieldBackedProvider.resetContextMatchers();
 

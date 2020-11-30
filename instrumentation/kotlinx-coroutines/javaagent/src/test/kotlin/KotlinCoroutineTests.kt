@@ -5,7 +5,7 @@
 
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.extension.kotlin.asContextElement
-import io.opentelemetry.javaagent.instrumentation.api.Java8BytecodeBridge
+import io.opentelemetry.javaagent.testing.common.Java8BytecodeBridge
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -153,6 +153,7 @@ class KotlinCoroutineTests(private val dispatcher: CoroutineDispatcher) {
     }
     span.end()
   }
+
   suspend fun a2(iter: Long) {
     var span = tracer.spanBuilder("a2").startSpan()
     span.setAttribute("iter", iter)
@@ -161,6 +162,7 @@ class KotlinCoroutineTests(private val dispatcher: CoroutineDispatcher) {
     }
     span.end()
   }
+
   suspend fun b(iter: Long) {
     var span = tracer.spanBuilder("b").startSpan()
     span.setAttribute("iter", iter)
@@ -170,6 +172,7 @@ class KotlinCoroutineTests(private val dispatcher: CoroutineDispatcher) {
     }
     span.end()
   }
+
   suspend fun b2(iter: Long) {
     var span = tracer.spanBuilder("b2").startSpan()
     span.setAttribute("iter", iter)

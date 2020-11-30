@@ -14,8 +14,8 @@ import io.opentelemetry.api.trace.attributes.SemanticAttributes
 import io.opentelemetry.api.trace.propagation.HttpTraceContext
 import io.opentelemetry.context.propagation.DefaultContextPropagators
 import io.opentelemetry.extension.trace.propagation.AwsXRayPropagator
-import io.opentelemetry.instrumentation.test.AgentTestRunner
 import io.opentelemetry.instrumentation.test.InstrumentationSpecification
+import io.opentelemetry.instrumentation.test.InstrumentationTestRunner
 import io.opentelemetry.instrumentation.test.InstrumentationTestTrait
 
 class AwsLambdaSqsMessageHandlerTest extends InstrumentationSpecification implements InstrumentationTestTrait {
@@ -26,7 +26,7 @@ class AwsLambdaSqsMessageHandlerTest extends InstrumentationSpecification implem
       .addTextMapPropagator(HttpTraceContext.instance)
       .addTextMapPropagator(AwsXRayPropagator.instance)
       .build()
-    AgentTestRunner.setGlobalPropagators(propagators)
+    InstrumentationTestRunner.setGlobalPropagators(propagators)
   }
 
   private static final String AWS_TRACE_HEADER1 = "Root=1-5759e988-bd862e3fe1be46a994272793;Parent=53995c3f42cd8ad8;Sampled=1"

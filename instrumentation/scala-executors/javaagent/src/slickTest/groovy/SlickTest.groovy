@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 import static io.opentelemetry.api.trace.Span.Kind.CLIENT
 
 import io.opentelemetry.api.trace.attributes.SemanticAttributes
@@ -40,7 +39,7 @@ class SlickTest extends AgentTestRunner {
             "$SemanticAttributes.DB_SYSTEM.key" "h2"
             "$SemanticAttributes.DB_NAME.key" SlickUtils.Db()
             "$SemanticAttributes.DB_USER.key" SlickUtils.Username()
-            "$SemanticAttributes.DB_STATEMENT.key" "SELECT ?"
+            "$SemanticAttributes.DB_STATEMENT.key" String
             "$SemanticAttributes.DB_CONNECTION_STRING.key" "h2:mem:"
           }
         }

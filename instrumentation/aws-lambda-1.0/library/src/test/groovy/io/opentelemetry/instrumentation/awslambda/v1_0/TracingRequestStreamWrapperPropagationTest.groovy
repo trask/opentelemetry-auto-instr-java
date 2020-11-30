@@ -14,8 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.opentelemetry.api.trace.attributes.SemanticAttributes
 import io.opentelemetry.context.propagation.DefaultContextPropagators
 import io.opentelemetry.extension.trace.propagation.B3Propagator
-import io.opentelemetry.instrumentation.test.AgentTestRunner
 import io.opentelemetry.instrumentation.test.InstrumentationSpecification
+import io.opentelemetry.instrumentation.test.InstrumentationTestRunner
 import io.opentelemetry.instrumentation.test.InstrumentationTestTrait
 import java.nio.charset.Charset
 import org.junit.Rule
@@ -52,7 +52,7 @@ class TracingRequestStreamWrapperPropagationTest extends InstrumentationSpecific
   TracingRequestStreamWrapper wrapper
 
   def childSetup() {
-    AgentTestRunner.setGlobalPropagators(DefaultContextPropagators.builder()
+    InstrumentationTestRunner.setGlobalPropagators(DefaultContextPropagators.builder()
       .addTextMapPropagator(B3Propagator.getInstance()).build())
     environmentVariables.set(WrappedLambda.OTEL_LAMBDA_HANDLER_ENV_KEY, "io.opentelemetry.instrumentation.awslambda.v1_0.TracingRequestStreamWrapperPropagationTest\$TestRequestHandler::handleRequest")
     TracingRequestStreamWrapper.WRAPPED_LAMBDA = WrappedLambda.fromConfiguration()

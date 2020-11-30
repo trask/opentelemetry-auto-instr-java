@@ -15,7 +15,7 @@ import com.google.common.collect.ImmutableMap
 import io.opentelemetry.api.trace.attributes.SemanticAttributes
 import io.opentelemetry.context.propagation.DefaultContextPropagators
 import io.opentelemetry.extension.trace.propagation.B3Propagator
-import io.opentelemetry.instrumentation.test.AgentTestRunner
+import io.opentelemetry.instrumentation.test.InstrumentationTestRunner
 
 class TracingRequestApiGatewayWrapperTest extends TracingRequestWrapperTestBase {
 
@@ -32,7 +32,7 @@ class TracingRequestApiGatewayWrapperTest extends TracingRequestWrapperTestBase 
 
   def childSetupSpec() {
     super.childSetupSpec()
-    AgentTestRunner.setGlobalPropagators(DefaultContextPropagators.builder()
+    InstrumentationTestRunner.setGlobalPropagators(DefaultContextPropagators.builder()
       .addTextMapPropagator(B3Propagator.getInstance()).build())
   }
 

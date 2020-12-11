@@ -15,8 +15,8 @@ import play.shaded.ahc.org.asynchttpclient.HttpResponseHeaders;
 import play.shaded.ahc.org.asynchttpclient.HttpResponseStatus;
 import play.shaded.ahc.org.asynchttpclient.Response;
 
-public class AsyncHandlerWrapper implements AsyncHandler {
-  private final AsyncHandler delegate;
+public class AsyncHandlerWrapper<T> implements AsyncHandler<T> {
+  private final AsyncHandler<T> delegate;
   private final Context context;
   private final Context parentContext;
 
@@ -48,10 +48,9 @@ public class AsyncHandlerWrapper implements AsyncHandler {
   }
 
   @Override
-  public Object onCompleted() throws Exception {
+  public T onCompleted() throws Exception {
     tracer().end(context, builder.build());
-
-    try (Scope scope = parentContext.makeCurrent()) {
+    try (Scope ignored = parentContext.makeCurrent()) {
       return delegate.onCompleted();
     }
   }
@@ -59,8 +58,7 @@ public class AsyncHandlerWrapper implements AsyncHandler {
   @Override
   public void onThrowable(Throwable throwable) {
     tracer().endExceptionally(context, throwable);
-
-    try (Scope scope = parentContext.makeCurrent()) {
+    try (Scope ignored = parentContext.makeCurrent()) {
       delegate.onThrowable(throwable);
     }
   }

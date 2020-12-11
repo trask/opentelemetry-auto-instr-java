@@ -7,16 +7,14 @@ package io.opentelemetry.javaagent.instrumentation.kubernetesclient;
 
 import static io.opentelemetry.api.trace.Span.Kind.CLIENT;
 
-import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.URI;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class KubernetesClientTracer extends HttpClientTracer<Request, Request, Response> {
+public class KubernetesClientTracer extends HttpClientTracer<Request, Response> {
   private static final KubernetesClientTracer TRACER = new KubernetesClientTracer();
 
   public static KubernetesClientTracer tracer() {
@@ -27,7 +25,10 @@ public class KubernetesClientTracer extends HttpClientTracer<Request, Request, R
    * This method is used to generate an acceptable CLIENT span (operation) name based on a given
    * KubernetesRequestDigest.
    */
-  public Context startSpan(Context parentContext, Request request) {
+  public Context startOperation(Context parentContext, Request request) {
+    if (inClientSpan(parentContext)) {
+      return noopContext(parentContext);
+    }
     KubernetesRequestDigest digest = KubernetesRequestDigest.parse(request);
     Span span =
         tracer
@@ -37,11 +38,8 @@ public class KubernetesClientTracer extends HttpClientTracer<Request, Request, R
             .setAttribute("namespace", digest.getResourceMeta().getNamespace())
             .setAttribute("name", digest.getResourceMeta().getName())
             .startSpan();
-    Context context = parentContext.with(span).with(CONTEXT_CLIENT_SPAN_KEY, span);
-    OpenTelemetry.getGlobalPropagators()
-        .getTextMapPropagator()
-        .inject(context, request, getSetter());
-    return context;
+    // TODO (trask) no propagation implemented yet?
+    return withClientSpan(parentContext, span);
   }
 
   @Override
@@ -70,19 +68,7 @@ public class KubernetesClientTracer extends HttpClientTracer<Request, Request, R
   }
 
   @Override
-  protected Setter<Request> getSetter() {
-    // TODO (trask) no propagation implemented yet?
-    return null;
-  }
-
-  @Override
   protected String getInstrumentationName() {
     return "io.opentelemetry.javaagent.kubernetes-client";
-  }
-
-  /** This method is overridden to allow other classes in this package to call it. */
-  @Override
-  protected Span onRequest(Span span, Request request) {
-    return super.onRequest(span, request);
   }
 }

@@ -8,9 +8,7 @@ package io.opentelemetry.instrumentation.spring.webflux.client;
 import static io.opentelemetry.instrumentation.spring.webflux.client.HttpHeadersInjectAdapter.SETTER;
 
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -20,8 +18,7 @@ import java.util.List;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 
-public class SpringWebfluxHttpClientTracer
-    extends HttpClientTracer<ClientRequest, ClientRequest.Builder, ClientResponse> {
+public class SpringWebfluxHttpClientTracer extends HttpClientTracer<ClientRequest, ClientResponse> {
 
   private static final SpringWebfluxHttpClientTracer TRACER = new SpringWebfluxHttpClientTracer();
 
@@ -30,6 +27,11 @@ public class SpringWebfluxHttpClientTracer
   }
 
   private static final MethodHandle RAW_STATUS_CODE = findRawStatusCode();
+
+  public Context startOperation(
+      Context parentContext, ClientRequest request, ClientRequest.Builder builder) {
+    return super.startOperation(parentContext, request, builder, SETTER);
+  }
 
   public void onCancel(Context context) {
     Span span = Span.fromContext(context);
@@ -73,17 +75,8 @@ public class SpringWebfluxHttpClientTracer
   }
 
   @Override
-  protected Setter<ClientRequest.Builder> getSetter() {
-    return SETTER;
-  }
-
-  @Override
   protected String getInstrumentationName() {
     return "io.opentelemetry.javaagent.spring-webflux";
-  }
-
-  public Tracer getTracer() {
-    return tracer;
   }
 
   // rawStatusCode() method was introduced in webflux 5.1

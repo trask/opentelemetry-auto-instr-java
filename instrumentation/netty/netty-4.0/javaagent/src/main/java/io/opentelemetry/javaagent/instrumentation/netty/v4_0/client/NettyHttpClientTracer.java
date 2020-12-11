@@ -6,23 +6,50 @@
 package io.opentelemetry.javaagent.instrumentation.netty.v4_0.client;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
+import static io.opentelemetry.api.trace.Span.Kind.CLIENT;
 import static io.opentelemetry.javaagent.instrumentation.netty.v4_0.client.NettyResponseInjectAdapter.SETTER;
 
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.SpanBuilder;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
+import io.opentelemetry.instrumentation.api.tracer.utils.NetPeerUtils;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class NettyHttpClientTracer
-    extends HttpClientTracer<HttpRequest, HttpHeaders, HttpResponse> {
+public class NettyHttpClientTracer extends HttpClientTracer<HttpRequest, HttpResponse> {
   private static final NettyHttpClientTracer TRACER = new NettyHttpClientTracer();
 
   public static NettyHttpClientTracer tracer() {
     return TRACER;
+  }
+
+  public Context startOperation(Context parentContext, ChannelHandlerContext ctx, Object msg) {
+    if (!(msg instanceof HttpRequest)) {
+      return noopContext(parentContext);
+    }
+    if (inClientSpan(parentContext)) {
+      return noopContext(parentContext);
+    }
+
+    HttpRequest request = (HttpRequest) msg;
+
+    SpanBuilder spanBuilder =
+        tracer.spanBuilder(spanName(request)).setSpanKind(CLIENT).setParent(parentContext);
+    onRequest(spanBuilder, request);
+    NetPeerUtils.INSTANCE.setNetPeer(
+        spanBuilder::setAttribute, (InetSocketAddress) ctx.channel().remoteAddress());
+
+    Context context = withClientSpan(parentContext, spanBuilder.startSpan());
+    OpenTelemetry.getGlobalPropagators()
+        .getTextMapPropagator()
+        .inject(context, request.headers(), SETTER);
+    return context;
   }
 
   @Override
@@ -58,11 +85,6 @@ public class NettyHttpClientTracer
   @Override
   protected String responseHeader(HttpResponse httpResponse, String name) {
     return httpResponse.headers().get(name);
-  }
-
-  @Override
-  protected Setter<HttpHeaders> getSetter() {
-    return SETTER;
   }
 
   @Override

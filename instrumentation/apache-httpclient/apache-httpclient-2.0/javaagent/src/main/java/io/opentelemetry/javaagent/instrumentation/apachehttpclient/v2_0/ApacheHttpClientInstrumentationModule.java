@@ -69,12 +69,7 @@ public class ApacheHttpClientInstrumentationModule extends InstrumentationModule
         @Advice.Argument(1) HttpMethod httpMethod,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
-
-      context = tracer().startSpan(parentContext, httpMethod, httpMethod);
+      context = tracer().startOperation(currentContext(), httpMethod);
       scope = context.makeCurrent();
     }
 
@@ -84,16 +79,8 @@ public class ApacheHttpClientInstrumentationModule extends InstrumentationModule
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
-
       scope.close();
-      if (throwable == null) {
-        tracer().end(context, httpMethod);
-      } else {
-        tracer().endExceptionally(context, httpMethod, throwable);
-      }
+      tracer().endMaybeExceptionally(context, httpMethod, throwable);
     }
   }
 }

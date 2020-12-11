@@ -53,7 +53,7 @@ public class OpenTelemetryClient extends SimpleDecoratingHttpClient {
     long requestStartTimeMicros =
         ctx.log().ensureAvailable(RequestLogProperty.REQUEST_START_TIME).requestStartTimeMicros();
     long requestStartTimeNanos = TimeUnit.MICROSECONDS.toNanos(requestStartTimeMicros);
-    Context context = clientTracer.startSpan(Context.current(), ctx, ctx, requestStartTimeNanos);
+    Context context = clientTracer.startOperation(Context.current(), ctx, requestStartTimeNanos);
 
     Span span = Span.fromContext(context);
     if (span.isRecording()) {
@@ -66,7 +66,7 @@ public class OpenTelemetryClient extends SimpleDecoratingHttpClient {
                 long requestEndTimeNanos = requestStartTimeNanos + log.responseDurationNanos();
                 if (log.responseCause() != null) {
                   clientTracer.endExceptionally(
-                      context, log, log.responseCause(), requestEndTimeNanos);
+                      context, log.responseCause(), log, requestEndTimeNanos);
                 } else {
                   clientTracer.end(context, log, requestEndTimeNanos);
                 }

@@ -6,24 +6,67 @@
 package io.opentelemetry.javaagent.instrumentation.netty.v4_1.client;
 
 import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
+import static io.opentelemetry.api.trace.Span.Kind.CLIENT;
 import static io.opentelemetry.javaagent.instrumentation.netty.v4_1.client.NettyResponseInjectAdapter.SETTER;
 
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
+import io.opentelemetry.instrumentation.api.tracer.utils.NetPeerUtils;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class NettyHttpClientTracer
-    extends HttpClientTracer<HttpRequest, HttpHeaders, HttpResponse> {
+public class NettyHttpClientTracer extends HttpClientTracer<HttpRequest, HttpResponse> {
   private static final NettyHttpClientTracer TRACER = new NettyHttpClientTracer();
 
   public static NettyHttpClientTracer tracer() {
     return TRACER;
+  }
+
+  public Context startOperation(Context parentContext, ChannelHandlerContext ctx, Object msg) {
+    if (!(msg instanceof HttpRequest)) {
+      return noopContext(parentContext);
+    }
+    HttpRequest request = (HttpRequest) msg;
+    if (suppressOperation(parentContext, request)) {
+      return noopContext(parentContext);
+    }
+
+    SpanBuilder spanBuilder =
+        tracer.spanBuilder(spanName(request)).setSpanKind(CLIENT).setParent(parentContext);
+    onRequest(spanBuilder, request);
+    NetPeerUtils.INSTANCE.setNetPeer(
+        spanBuilder::setAttribute, (InetSocketAddress) ctx.channel().remoteAddress());
+
+    Context context = withClientSpan(parentContext, spanBuilder.startSpan());
+    OpenTelemetry.getGlobalPropagators()
+        .getTextMapPropagator()
+        .inject(context, request.headers(), SETTER);
+    return context;
+  }
+
+  private boolean suppressOperation(Context parentContext, HttpRequest request) {
+    if (inClientSpan(parentContext)) {
+      return true;
+    }
+    // The AWS SDK uses Netty for asynchronous clients but constructs a request signature before
+    // beginning transport. This means we MUST suppress Netty spans we would normally create or
+    // they will inject their own trace header, which does not match what was present when the
+    // signature was computed, breaking the SDK request completely. We have not found how to
+    // cleanly propagate context from the SDK instrumentation, which executes on an application
+    // thread, to Netty instrumentation, which executes on event loops. If it's possible, it may
+    // require instrumenting internal classes. Using a header which is more or less guaranteed to
+    // always exist is arguably more stable.
+    if (request.headers().contains("amz-sdk-invocation-id")) {
+      return true;
+    }
+    return false;
   }
 
   @Override
@@ -59,29 +102,6 @@ public class NettyHttpClientTracer
   @Override
   protected String responseHeader(HttpResponse httpResponse, String name) {
     return httpResponse.headers().get(name);
-  }
-
-  @Override
-  protected Setter<HttpHeaders> getSetter() {
-    return SETTER;
-  }
-
-  public boolean shouldStartSpan(Context parentContext, HttpRequest request) {
-    if (!super.shouldStartSpan(parentContext)) {
-      return false;
-    }
-    // The AWS SDK uses Netty for asynchronous clients but constructs a request signature before
-    // beginning transport. This means we MUST suppress Netty spans we would normally create or
-    // they will inject their own trace header, which does not match what was present when the
-    // signature was computed, breaking the SDK request completely. We have not found how to
-    // cleanly propagate context from the SDK instrumentation, which executes on an application
-    // thread, to Netty instrumentation, which executes on event loops. If it's possible, it may
-    // require instrumenting internal classes. Using a header which is more or less guaranteed to
-    // always exist is arguably more stable.
-    if (request.headers().contains("amz-sdk-invocation-id")) {
-      return false;
-    }
-    return true;
   }
 
   @Override

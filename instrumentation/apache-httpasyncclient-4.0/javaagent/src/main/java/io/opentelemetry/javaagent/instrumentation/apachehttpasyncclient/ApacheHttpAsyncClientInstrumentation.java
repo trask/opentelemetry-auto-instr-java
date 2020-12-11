@@ -16,7 +16,6 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.javaagent.tooling.TypeInstrumentation;
@@ -70,14 +69,8 @@ public class ApacheHttpAsyncClientInstrumentation implements TypeInstrumentation
         @Advice.Argument(2) HttpContext httpContext,
         @Advice.Argument(value = 3, readOnly = false) FutureCallback<?> futureCallback,
         @Advice.Local("otelContext") Context context) {
-
       Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
-
-      context = tracer().startSpan(parentContext);
-
+      context = tracer().startOperation(parentContext);
       requestProducer = new DelegatingRequestProducer(context, requestProducer);
       futureCallback =
           new TraceContinuedFutureCallback<>(parentContext, context, httpContext, futureCallback);
@@ -85,10 +78,8 @@ public class ApacheHttpAsyncClientInstrumentation implements TypeInstrumentation
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void methodExit(
-        @Advice.Return Object result,
-        @Advice.Thrown Throwable throwable,
-        @Advice.Local("otelContext") Context context) {
-      if (context != null && throwable != null) {
+        @Advice.Thrown Throwable throwable, @Advice.Local("otelContext") Context context) {
+      if (throwable != null) {
         tracer().endExceptionally(context, throwable);
       }
     }
@@ -111,12 +102,11 @@ public class ApacheHttpAsyncClientInstrumentation implements TypeInstrumentation
     @Override
     public HttpRequest generateRequest() throws IOException, HttpException {
       HttpRequest request = delegate.generateRequest();
+      // TODO (trask) move this into tracer?
       OpenTelemetry.getGlobalPropagators()
           .getTextMapPropagator()
-          .inject(context, request, tracer().getSetter());
-      Span span = Span.fromContext(context);
-      span.updateName(tracer().spanNameForRequest(request));
-      tracer().onRequest(span, request);
+          .inject(context, request, HttpHeadersInjectAdapter.SETTER);
+      tracer().onRequest(context, request);
       return request;
     }
 
@@ -172,59 +162,30 @@ public class ApacheHttpAsyncClientInstrumentation implements TypeInstrumentation
     @Override
     public void completed(T result) {
       tracer().end(context, getResponse(httpContext));
-
-      if (parentContext == null) {
-        completeDelegate(result);
-      } else {
-        try (Scope scope = parentContext.makeCurrent()) {
-          completeDelegate(result);
+      if (delegate != null) {
+        try (Scope ignored = parentContext.makeCurrent()) {
+          delegate.completed(result);
         }
       }
     }
 
     @Override
     public void failed(Exception ex) {
-      // end span before calling delegate
-      tracer().endExceptionally(context, getResponse(httpContext), ex);
-
-      if (parentContext == null) {
-        failDelegate(ex);
-      } else {
-        try (Scope scope = parentContext.makeCurrent()) {
-          failDelegate(ex);
+      tracer().endExceptionally(context, ex, getResponse(httpContext));
+      if (delegate != null) {
+        try (Scope ignored = parentContext.makeCurrent()) {
+          delegate.failed(ex);
         }
       }
     }
 
     @Override
     public void cancelled() {
-      // end span before calling delegate
       tracer().end(context, getResponse(httpContext));
-
-      if (parentContext == null) {
-        cancelDelegate();
-      } else {
-        try (Scope scope = parentContext.makeCurrent()) {
-          cancelDelegate();
+      if (delegate != null) {
+        try (Scope ignored = parentContext.makeCurrent()) {
+          delegate.cancelled();
         }
-      }
-    }
-
-    private void completeDelegate(T result) {
-      if (delegate != null) {
-        delegate.completed(result);
-      }
-    }
-
-    private void failDelegate(Exception ex) {
-      if (delegate != null) {
-        delegate.failed(ex);
-      }
-    }
-
-    private void cancelDelegate() {
-      if (delegate != null) {
-        delegate.cancelled();
       }
     }
 

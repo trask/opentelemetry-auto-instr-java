@@ -5,11 +5,12 @@
 
 package io.opentelemetry.javaagent.instrumentation.httpclient;
 
+import static io.opentelemetry.javaagent.instrumentation.httpclient.HttpHeadersInjectAdapter.SETTER;
+
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.attributes.SemanticAttributes;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.URI;
 import java.net.http.HttpClient.Version;
@@ -22,12 +23,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
-public class JdkHttpClientTracer
-    extends HttpClientTracer<HttpRequest, HttpRequest, HttpResponse<?>> {
+public class JdkHttpClientTracer extends HttpClientTracer<HttpRequest, HttpResponse<?>> {
   private static final JdkHttpClientTracer TRACER = new JdkHttpClientTracer();
 
   public static JdkHttpClientTracer tracer() {
     return TRACER;
+  }
+
+  public Context startOperation(Context parentContext, HttpRequest request) {
+    return super.startOperation(parentContext, request, SETTER);
   }
 
   @Override
@@ -61,31 +65,26 @@ public class JdkHttpClientTracer
   }
 
   @Override
-  protected Span onResponse(Span span, HttpResponse<?> httpResponse) {
-    span = super.onResponse(span, httpResponse);
-
-    if (httpResponse != null) {
-      span.setAttribute(
-          SemanticAttributes.HTTP_FLAVOR,
-          httpResponse.version() == Version.HTTP_1_1 ? "1.1" : "2.0");
-    }
-
-    return span;
+  protected void onResponse(Context context, HttpResponse<?> httpResponse) {
+    super.onResponse(context, httpResponse);
+    String flavor = httpResponse.version() == Version.HTTP_1_1 ? "1.1" : "2.0";
+    Span.fromContext(context).setAttribute(SemanticAttributes.HTTP_FLAVOR, flavor);
   }
 
   @Override
-  protected Setter<HttpRequest> getSetter() {
-    return HttpHeadersInjectAdapter.SETTER;
+  protected void onException(Span span, Throwable throwable) {
+    super.onException(span, unwrapThrowable(throwable));
   }
 
-  @Override
-  protected Throwable unwrapThrowable(Throwable throwable) {
+  private static Throwable unwrapThrowable(Throwable throwable) {
     if (throwable instanceof CompletionException) {
       return throwable.getCause();
     }
-    return super.unwrapThrowable(throwable);
+    return throwable;
   }
 
+  // TODO (trask) need to pass in Context here so that injection will not occur when Context is
+  //  "no-op"
   public HttpHeaders inject(HttpHeaders original) {
     Map<String, List<String>> headerMap = new HashMap<>();
 

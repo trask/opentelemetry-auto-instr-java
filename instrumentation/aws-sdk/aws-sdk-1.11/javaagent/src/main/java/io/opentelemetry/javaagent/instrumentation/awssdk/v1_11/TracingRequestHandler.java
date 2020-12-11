@@ -6,7 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.awssdk.v1_11;
 
 import static io.opentelemetry.javaagent.instrumentation.awssdk.v1_11.AwsSdkClientTracer.tracer;
-import static io.opentelemetry.javaagent.instrumentation.awssdk.v1_11.RequestMeta.CONTEXT_SCOPE_PAIR_CONTEXT_KEY;
+import static io.opentelemetry.javaagent.instrumentation.awssdk.v1_11.RequestMeta.CONTEXT_SCOPE_PAIR_KEY;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.Request;
@@ -29,20 +29,16 @@ public class TracingRequestHandler extends RequestHandler2 {
   public void beforeRequest(Request<?> request) {
     AmazonWebServiceRequest originalRequest = request.getOriginalRequest();
     RequestMeta requestMeta = contextStore.get(originalRequest);
-    Context parentContext = Context.current();
-    if (tracer().shouldStartSpan(parentContext)) {
-      Context context = tracer().startSpan(parentContext, request, requestMeta);
-      Scope scope = context.makeCurrent();
-      request.addHandlerContext(
-          CONTEXT_SCOPE_PAIR_CONTEXT_KEY, new ContextScopePair(context, scope));
-    }
+    Context context = tracer().startOperation(Context.current(), request, requestMeta);
+    Scope scope = context.makeCurrent();
+    request.addHandlerContext(CONTEXT_SCOPE_PAIR_KEY, new ContextScopePair(context, scope));
   }
 
   @Override
   public void afterResponse(Request<?> request, Response<?> response) {
-    ContextScopePair scope = request.getHandlerContext(CONTEXT_SCOPE_PAIR_CONTEXT_KEY);
+    ContextScopePair scope = request.getHandlerContext(CONTEXT_SCOPE_PAIR_KEY);
     if (scope != null) {
-      request.addHandlerContext(CONTEXT_SCOPE_PAIR_CONTEXT_KEY, null);
+      request.addHandlerContext(CONTEXT_SCOPE_PAIR_KEY, null);
       scope.closeScope();
       tracer().end(scope.getContext(), response);
     }
@@ -50,11 +46,11 @@ public class TracingRequestHandler extends RequestHandler2 {
 
   @Override
   public void afterError(Request<?> request, Response<?> response, Exception e) {
-    ContextScopePair scope = request.getHandlerContext(CONTEXT_SCOPE_PAIR_CONTEXT_KEY);
+    ContextScopePair scope = request.getHandlerContext(CONTEXT_SCOPE_PAIR_KEY);
     if (scope != null) {
-      request.addHandlerContext(CONTEXT_SCOPE_PAIR_CONTEXT_KEY, null);
+      request.addHandlerContext(CONTEXT_SCOPE_PAIR_KEY, null);
       scope.closeScope();
-      tracer().endExceptionally(scope.getContext(), response, e);
+      tracer().endExceptionally(scope.getContext(), e);
     }
   }
 }

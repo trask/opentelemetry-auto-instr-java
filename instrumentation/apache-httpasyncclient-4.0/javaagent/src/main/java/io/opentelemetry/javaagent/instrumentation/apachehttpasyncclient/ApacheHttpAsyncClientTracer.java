@@ -6,11 +6,9 @@
 package io.opentelemetry.javaagent.instrumentation.apachehttpasyncclient;
 
 import static io.opentelemetry.api.trace.Span.Kind.CLIENT;
-import static io.opentelemetry.javaagent.instrumentation.apachehttpasyncclient.HttpHeadersInjectAdapter.SETTER;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -23,8 +21,7 @@ import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class ApacheHttpAsyncClientTracer
-    extends HttpClientTracer<HttpRequest, HttpRequest, HttpResponse> {
+public class ApacheHttpAsyncClientTracer extends HttpClientTracer<HttpRequest, HttpResponse> {
 
   private static final ApacheHttpAsyncClientTracer TRACER = new ApacheHttpAsyncClientTracer();
 
@@ -32,14 +29,17 @@ public class ApacheHttpAsyncClientTracer
     return TRACER;
   }
 
-  public Context startSpan(Context parentContext) {
-    Span span =
+  public final Context startOperation(Context parentContext) {
+    if (inClientSpan(parentContext)) {
+      return noopContext(parentContext);
+    }
+    Span clientSpan =
         tracer
             .spanBuilder(DEFAULT_SPAN_NAME)
             .setSpanKind(CLIENT)
             .setParent(parentContext)
             .startSpan();
-    return parentContext.with(span).with(CONTEXT_CLIENT_SPAN_KEY, span);
+    return withClientSpan(parentContext, clientSpan);
   }
 
   @Override
@@ -89,8 +89,12 @@ public class ApacheHttpAsyncClientTracer
   }
 
   @Override
-  protected Setter<HttpRequest> getSetter() {
-    return SETTER;
+  public void onRequest(Context context, HttpRequest request) {
+    String method = method(request);
+    if (method != null) {
+      Span.fromContext(context).updateName("HTTP " + method);
+    }
+    super.onRequest(context, request);
   }
 
   private static String header(HttpMessage message, String name) {
@@ -101,16 +105,5 @@ public class ApacheHttpAsyncClientTracer
   @Override
   protected String getInstrumentationName() {
     return "io.opentelemetry.javaagent.apache-httpasyncclient";
-  }
-
-  @Override
-  public String spanNameForRequest(HttpRequest httpRequest) {
-    return super.spanNameForRequest(httpRequest);
-  }
-
-  /** This method is overridden to allow other classes in this package to call it. */
-  @Override
-  public Span onRequest(Span span, HttpRequest httpRequest) {
-    return super.onRequest(span, httpRequest);
   }
 }

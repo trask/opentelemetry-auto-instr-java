@@ -74,31 +74,18 @@ public class HttpClientInstrumentation implements TypeInstrumentation {
         @Advice.Argument(value = 0) HttpRequest httpRequest,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
-
-      context = tracer().startSpan(parentContext, httpRequest, httpRequest);
+      context = tracer().startOperation(currentContext(), httpRequest);
       scope = context.makeCurrent();
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void methodExit(
-        @Advice.Return HttpResponse<?> result,
+        @Advice.Return HttpResponse<?> response,
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
-
       scope.close();
-      if (throwable == null) {
-        tracer().end(context, result);
-      } else {
-        tracer().endExceptionally(context, result, throwable);
-      }
+      tracer().endMaybeExceptionally(context, response, throwable);
     }
   }
 
@@ -109,12 +96,7 @@ public class HttpClientInstrumentation implements TypeInstrumentation {
         @Advice.Argument(value = 0) HttpRequest httpRequest,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
-
-      context = tracer().startSpan(parentContext, httpRequest, httpRequest);
+      context = tracer().startOperation(currentContext(), httpRequest);
       scope = context.makeCurrent();
     }
 
@@ -124,13 +106,9 @@ public class HttpClientInstrumentation implements TypeInstrumentation {
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
-
       scope.close();
       if (throwable != null) {
-        tracer().endExceptionally(context, null, throwable);
+        tracer().endExceptionally(context, throwable);
       } else {
         future = future.whenComplete(new ResponseConsumer(context));
       }

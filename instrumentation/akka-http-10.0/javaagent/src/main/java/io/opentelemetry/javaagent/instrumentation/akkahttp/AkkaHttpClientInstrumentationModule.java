@@ -78,14 +78,10 @@ public class AkkaHttpClientInstrumentationModule extends InstrumentationModule {
       In the future we may want to separate these, but since lots of code is reused we would need to come up
       with way of continuing to reusing it.
        */
-      Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
 
       // Request is immutable, so we have to assign new value once we update headers
       AkkaHttpHeaders headers = new AkkaHttpHeaders(request);
-      context = tracer().startSpan(parentContext, request, headers);
+      context = tracer().startOperation(currentContext(), request, headers);
       scope = context.makeCurrent();
       request = headers.getRequest();
     }
@@ -98,10 +94,6 @@ public class AkkaHttpClientInstrumentationModule extends InstrumentationModule {
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
-
       scope.close();
       if (throwable == null) {
         responseFuture.onComplete(new OnCompleteHandler(context), thiz.system().dispatcher());
@@ -126,22 +118,6 @@ public class AkkaHttpClientInstrumentationModule extends InstrumentationModule {
         tracer().endExceptionally(context, result.failed().get());
       }
       return null;
-    }
-  }
-
-  public static class AkkaHttpHeaders {
-    private HttpRequest request;
-
-    public AkkaHttpHeaders(HttpRequest request) {
-      this.request = request;
-    }
-
-    public HttpRequest getRequest() {
-      return request;
-    }
-
-    public void setRequest(HttpRequest request) {
-      this.request = request;
     }
   }
 

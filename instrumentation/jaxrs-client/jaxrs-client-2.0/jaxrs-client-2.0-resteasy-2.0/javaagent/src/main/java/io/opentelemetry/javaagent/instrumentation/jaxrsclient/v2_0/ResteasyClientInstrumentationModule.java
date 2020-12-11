@@ -70,11 +70,8 @@ public class ResteasyClientInstrumentationModule extends InstrumentationModule {
         @Advice.This ClientInvocation invocation,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      Context parentContext = currentContext();
-      if (tracer().shouldStartSpan(parentContext)) {
-        context = tracer().startSpan(parentContext, invocation, invocation);
-        scope = context.makeCurrent();
-      }
+      context = tracer().startOperation(currentContext(), invocation);
+      scope = context.makeCurrent();
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
@@ -83,16 +80,8 @@ public class ResteasyClientInstrumentationModule extends InstrumentationModule {
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
-
       scope.close();
-      if (throwable != null) {
-        tracer().endExceptionally(context, throwable);
-      } else {
-        tracer().end(context, response);
-      }
+      tracer().endMaybeExceptionally(context, response, throwable);
     }
   }
 }

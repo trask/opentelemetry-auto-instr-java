@@ -5,18 +5,21 @@
 
 package io.opentelemetry.javaagent.instrumentation.awssdk.v1_11;
 
+import static io.opentelemetry.api.trace.Span.Kind.CLIENT;
+
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.AmazonWebServiceResponse;
 import com.amazonaws.Request;
 import com.amazonaws.Response;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.URI;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AwsSdkClientTracer extends HttpClientTracer<Request<?>, Request<?>, Response<?>> {
+public class AwsSdkClientTracer extends HttpClientTracer<Request<?>, Response<?>> {
 
   static final String COMPONENT_NAME = "java-aws-sdk";
 
@@ -30,46 +33,59 @@ public class AwsSdkClientTracer extends HttpClientTracer<Request<?>, Request<?>,
 
   public AwsSdkClientTracer() {}
 
+  public Context startOperation(
+      Context parentContext, Request<?> request, RequestMeta requestMeta) {
+
+    if (inClientSpan(parentContext)) {
+      return noopContext(parentContext);
+    }
+    SpanBuilder spanBuilder =
+        tracer.spanBuilder(spanName(request)).setSpanKind(CLIENT).setParent(parentContext);
+    onRequest(spanBuilder, request);
+
+    String awsServiceName = request.getServiceName();
+    AmazonWebServiceRequest originalRequest = request.getOriginalRequest();
+    Class<?> awsOperation = originalRequest.getClass();
+
+    spanBuilder.setAttribute("aws.agent", COMPONENT_NAME);
+    spanBuilder.setAttribute("aws.service", awsServiceName);
+    spanBuilder.setAttribute("aws.operation", awsOperation.getSimpleName());
+    spanBuilder.setAttribute("aws.endpoint", request.getEndpoint().toString());
+
+    if (requestMeta != null) {
+      spanBuilder.setAttribute("aws.bucket.name", requestMeta.getBucketName());
+      spanBuilder.setAttribute("aws.queue.url", requestMeta.getQueueUrl());
+      spanBuilder.setAttribute("aws.queue.name", requestMeta.getQueueName());
+      spanBuilder.setAttribute("aws.stream.name", requestMeta.getStreamName());
+      spanBuilder.setAttribute("aws.table.name", requestMeta.getTableName());
+    }
+    Span span = spanBuilder.startSpan();
+    Context context = withClientSpan(parentContext, span);
+    // TODO (trask) should this be AwsXRayPropagator.getInstance()?
+    OpenTelemetry.getGlobalPropagators()
+        .getTextMapPropagator()
+        .inject(context, request, AwsSdkInjectAdapter.INSTANCE);
+    return context;
+  }
+
   @Override
-  public String spanNameForRequest(Request<?> request) {
+  public void onResponse(Context context, Response<?> response) {
+    Span span = Span.fromContext(context);
+    if (response != null && response.getAwsResponse() instanceof AmazonWebServiceResponse) {
+      AmazonWebServiceResponse awsResp = (AmazonWebServiceResponse) response.getAwsResponse();
+      span.setAttribute("aws.requestId", awsResp.getRequestId());
+    }
+    super.onResponse(context, response);
+  }
+
+  @Override
+  protected String spanName(Request<?> request) {
     if (request == null) {
       return DEFAULT_SPAN_NAME;
     }
     String awsServiceName = request.getServiceName();
     Class<?> awsOperation = request.getOriginalRequest().getClass();
     return qualifiedOperation(awsServiceName, awsOperation);
-  }
-
-  public Context startSpan(Context parentContext, Request<?> request, RequestMeta requestMeta) {
-    Context context = super.startSpan(parentContext, request, request);
-    Span span = Span.fromContext(context);
-
-    String awsServiceName = request.getServiceName();
-    AmazonWebServiceRequest originalRequest = request.getOriginalRequest();
-    Class<?> awsOperation = originalRequest.getClass();
-
-    span.setAttribute("aws.agent", COMPONENT_NAME);
-    span.setAttribute("aws.service", awsServiceName);
-    span.setAttribute("aws.operation", awsOperation.getSimpleName());
-    span.setAttribute("aws.endpoint", request.getEndpoint().toString());
-
-    if (requestMeta != null) {
-      span.setAttribute("aws.bucket.name", requestMeta.getBucketName());
-      span.setAttribute("aws.queue.url", requestMeta.getQueueUrl());
-      span.setAttribute("aws.queue.name", requestMeta.getQueueName());
-      span.setAttribute("aws.stream.name", requestMeta.getStreamName());
-      span.setAttribute("aws.table.name", requestMeta.getTableName());
-    }
-    return context;
-  }
-
-  @Override
-  public Span onResponse(Span span, Response<?> response) {
-    if (response != null && response.getAwsResponse() instanceof AmazonWebServiceResponse) {
-      AmazonWebServiceResponse awsResp = (AmazonWebServiceResponse) response.getAwsResponse();
-      span.setAttribute("aws.requestId", awsResp.getRequestId());
-    }
-    return super.onResponse(span, response);
   }
 
   private String qualifiedOperation(String service, Class<?> operation) {
@@ -108,11 +124,6 @@ public class AwsSdkClientTracer extends HttpClientTracer<Request<?>, Request<?>,
   @Override
   protected String responseHeader(Response<?> response, String name) {
     return response.getHttpResponse().getHeaders().get(name);
-  }
-
-  @Override
-  protected Setter<Request<?>> getSetter() {
-    return AwsSdkInjectAdapter.INSTANCE;
   }
 
   @Override

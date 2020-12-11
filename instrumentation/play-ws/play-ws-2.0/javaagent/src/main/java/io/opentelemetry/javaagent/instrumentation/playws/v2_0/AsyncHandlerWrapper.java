@@ -19,8 +19,8 @@ import play.shaded.ahc.org.asynchttpclient.HttpResponseStatus;
 import play.shaded.ahc.org.asynchttpclient.Response;
 import play.shaded.ahc.org.asynchttpclient.netty.request.NettyRequest;
 
-public class AsyncHandlerWrapper implements AsyncHandler {
-  private final AsyncHandler delegate;
+public class AsyncHandlerWrapper<T> implements AsyncHandler<T> {
+  private final AsyncHandler<T> delegate;
   private final Context context;
   private final Context parentContext;
 
@@ -52,10 +52,9 @@ public class AsyncHandlerWrapper implements AsyncHandler {
   }
 
   @Override
-  public Object onCompleted() throws Exception {
+  public T onCompleted() throws Exception {
     Response response = builder.build();
     tracer().end(context, response);
-
     try (Scope ignored = parentContext.makeCurrent()) {
       return delegate.onCompleted();
     }
@@ -64,7 +63,6 @@ public class AsyncHandlerWrapper implements AsyncHandler {
   @Override
   public void onThrowable(Throwable throwable) {
     tracer().endExceptionally(context, throwable);
-
     try (Scope ignored = parentContext.makeCurrent()) {
       delegate.onThrowable(throwable);
     }
@@ -81,7 +79,7 @@ public class AsyncHandlerWrapper implements AsyncHandler {
   }
 
   @Override
-  public void onHostnameResolutionSuccess(String name, List list) {
+  public void onHostnameResolutionSuccess(String name, List<InetSocketAddress> list) {
     delegate.onHostnameResolutionSuccess(name, list);
   }
 

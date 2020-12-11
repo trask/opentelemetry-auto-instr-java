@@ -39,26 +39,27 @@ public final class TraceWebClientSubscriber implements CoreSubscriber<ClientResp
 
   @Override
   public void onNext(ClientResponse response) {
+    tracer().end(tracingContext, response);
+    // TODO (trask) this should use parentContext
     try (Scope ignored = tracingContext.makeCurrent()) {
-      this.actual.onNext(response);
-    } finally {
-      tracer().end(tracingContext, response);
+      actual.onNext(response);
     }
   }
 
   @Override
   public void onError(Throwable t) {
+    tracer().endExceptionally(tracingContext, t);
+    // TODO (trask) this should use parentContext
     try (Scope ignored = tracingContext.makeCurrent()) {
-      this.actual.onError(t);
-    } finally {
-      tracer().endExceptionally(tracingContext, t);
+      actual.onError(t);
     }
   }
 
   @Override
   public void onComplete() {
+    // TODO (trask) this should use parentContext
     try (Scope ignored = tracingContext.makeCurrent()) {
-      this.actual.onComplete();
+      actual.onComplete();
     }
   }
 

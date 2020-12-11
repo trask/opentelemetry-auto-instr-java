@@ -7,18 +7,22 @@ package io.opentelemetry.javaagent.instrumentation.jaxrsclient.v2_0;
 
 import static io.opentelemetry.javaagent.instrumentation.jaxrsclient.v2_0.InjectAdapter.SETTER;
 
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.URI;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientResponseContext;
 
 public class JaxRsClientTracer
-    extends HttpClientTracer<ClientRequestContext, ClientRequestContext, ClientResponseContext> {
+    extends HttpClientTracer<ClientRequestContext, ClientResponseContext> {
   private static final JaxRsClientTracer TRACER = new JaxRsClientTracer();
 
   public static JaxRsClientTracer tracer() {
     return TRACER;
+  }
+
+  public Context startOperation(Context parentContext, ClientRequestContext request) {
+    return super.startOperation(parentContext, request, SETTER);
   }
 
   @Override
@@ -44,11 +48,6 @@ public class JaxRsClientTracer
   @Override
   protected String responseHeader(ClientResponseContext clientResponseContext, String name) {
     return clientResponseContext.getHeaderString(name);
-  }
-
-  @Override
-  protected Setter<ClientRequestContext> getSetter() {
-    return SETTER;
   }
 
   @Override

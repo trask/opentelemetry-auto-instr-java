@@ -7,19 +7,22 @@ package io.opentelemetry.javaagent.instrumentation.httpurlconnection;
 
 import static io.opentelemetry.javaagent.instrumentation.httpurlconnection.HeadersInjectAdapter.SETTER;
 
-import io.opentelemetry.context.propagation.TextMapPropagator.Setter;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.tracer.HttpClientTracer;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-public class HttpUrlConnectionTracer
-    extends HttpClientTracer<HttpURLConnection, HttpURLConnection, HttpUrlResponse> {
+public class HttpUrlConnectionTracer extends HttpClientTracer<HttpURLConnection, HttpUrlResponse> {
 
   private static final HttpUrlConnectionTracer TRACER = new HttpUrlConnectionTracer();
 
   public static HttpUrlConnectionTracer tracer() {
     return TRACER;
+  }
+
+  public Context startOperation(Context parentContext, HttpURLConnection request) {
+    return super.startOperation(parentContext, request, SETTER);
   }
 
   @Override
@@ -45,11 +48,6 @@ public class HttpUrlConnectionTracer
   @Override
   protected String responseHeader(HttpUrlResponse response, String name) {
     return response.header(name);
-  }
-
-  @Override
-  protected Setter<HttpURLConnection> getSetter() {
-    return SETTER;
   }
 
   @Override

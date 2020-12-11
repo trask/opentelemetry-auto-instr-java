@@ -5,9 +5,7 @@
 
 package io.opentelemetry.instrumentation.api.tracer
 
-import io.opentelemetry.api.trace.Span
 import io.opentelemetry.api.trace.attributes.SemanticAttributes
-import io.opentelemetry.context.propagation.TextMapPropagator
 import io.opentelemetry.instrumentation.api.config.Config
 import io.opentelemetry.instrumentation.api.config.ConfigBuilder
 import spock.lang.Shared
@@ -139,30 +137,11 @@ class HttpClientTracerTest extends BaseTracerTest {
     500    | [status: 500]
     500    | [status: 500]
     600    | [status: 600]
-    null   | [status: null]
-    null   | null
-  }
-
-  def "test assert null span"() {
-    setup:
-    def tracer = newTracer()
-
-    when:
-    tracer.onRequest((Span) null, null)
-
-    then:
-    thrown(AssertionError)
-
-    when:
-    tracer.onResponse((Span) null, null)
-
-    then:
-    thrown(AssertionError)
   }
 
   @Override
   def newTracer() {
-    return new HttpClientTracer<Map, Map, Map>() {
+    return new HttpClientTracer<Map, Map>() {
 
       @Override
       protected String method(Map m) {
@@ -187,11 +166,6 @@ class HttpClientTracerTest extends BaseTracerTest {
       @Override
       protected String responseHeader(Map m, String name) {
         return m[name]
-      }
-
-      @Override
-      protected TextMapPropagator.Setter<Map> getSetter() {
-        return null
       }
 
       @Override

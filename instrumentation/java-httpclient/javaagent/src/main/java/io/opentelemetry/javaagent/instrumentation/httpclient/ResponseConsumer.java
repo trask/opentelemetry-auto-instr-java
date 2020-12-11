@@ -20,10 +20,6 @@ public class ResponseConsumer implements BiConsumer<HttpResponse<?>, Throwable> 
 
   @Override
   public void accept(HttpResponse<?> httpResponse, Throwable throwable) {
-    if (throwable == null) {
-      tracer().end(context, httpResponse);
-    } else {
-      tracer().endExceptionally(context, httpResponse, throwable);
-    }
+    tracer().endMaybeExceptionally(context, httpResponse, throwable);
   }
 }

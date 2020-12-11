@@ -41,20 +41,16 @@ public class PlayWsInstrumentationModule extends InstrumentationModule {
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
       Context parentContext = currentContext();
-      if (!tracer().shouldStartSpan(parentContext)) {
-        return;
-      }
-
-      context = tracer().startSpan(parentContext, request, request.getHeaders());
+      context = tracer().startOperation(parentContext, request, request.getHeaders());
       scope = context.makeCurrent();
 
       if (asyncHandler instanceof StreamedAsyncHandler) {
         asyncHandler =
-            new StreamedAsyncHandlerWrapper(
+            new StreamedAsyncHandlerWrapper<>(
                 (StreamedAsyncHandler<?>) asyncHandler, context, parentContext);
       } else if (!(asyncHandler instanceof WebSocketUpgradeHandler)) {
         // websocket upgrade handlers aren't supported
-        asyncHandler = new AsyncHandlerWrapper(asyncHandler, context, parentContext);
+        asyncHandler = new AsyncHandlerWrapper<>(asyncHandler, context, parentContext);
       }
     }
 
@@ -63,11 +59,7 @@ public class PlayWsInstrumentationModule extends InstrumentationModule {
         @Advice.Thrown Throwable throwable,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
-      if (scope == null) {
-        return;
-      }
       scope.close();
-
       if (throwable != null) {
         tracer().endExceptionally(context, throwable);
       }

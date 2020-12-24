@@ -43,7 +43,13 @@ class OkHttp3AsyncTest extends OkHttp3Test {
         latch.countDown()
       }
     })
-    latch.await(20, SECONDS)
+    def start = System.currentTimeMillis()
+    latch.await(1, SECONDS)
+    println "==================================="
+    println "==================================="
+    println System.currentTimeMillis() - start
+    println "==================================="
+    println "==================================="
     if (exRef.get() != null) {
       throw exRef.get()
     }

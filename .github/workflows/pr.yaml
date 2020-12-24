@@ -19,7 +19,11 @@ jobs:
           job-id: jdk11
 
       - name: Build
-        run: ./gradlew check --stacktrace -x :smoke-tests:test
+        run: |
+          echo "hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo $CI
+          env
+          ./gradlew check --stacktrace -x :smoke-tests:test
 
   test:
     runs-on: ubuntu-latest

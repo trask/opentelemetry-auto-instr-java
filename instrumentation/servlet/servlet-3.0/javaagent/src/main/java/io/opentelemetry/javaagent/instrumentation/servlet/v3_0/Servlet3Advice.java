@@ -36,19 +36,34 @@ public class Servlet3Advice {
 
     Context attachedContext = tracer().getServerContext(httpServletRequest);
     if (attachedContext != null) {
+      // We are inside nested servlet/filter/app-server span, don't create new span
+
       if (Servlet3HttpServerTracer.needsRescoping(attachedContext)) {
+        attachedContext = tracer().runOnceUnderAppServer(attachedContext, httpServletRequest);
+        scope = attachedContext.makeCurrent();
+        return;
+      }
+
+      Context currentContext = Java8BytecodeBridge.currentContext();
+      Context updatedContext = tracer().runOnceUnderAppServer(currentContext, httpServletRequest);
+      if (updatedContext != currentContext) {
+        // runOnceUnderAppServer added something to the context, need to re-scope
         scope = attachedContext.makeCurrent();
       }
 
-      tracer().updateServerSpanNameOnce(attachedContext, httpServletRequest);
-      // We are inside nested servlet/filter/app-server span, don't create new span
       return;
     }
 
-    Context parentContext = Java8BytecodeBridge.currentContext();
-    if (parentContext != null && Java8BytecodeBridge.spanFromContext(parentContext).isRecording()) {
-      tracer().updateServerSpanNameOnce(parentContext, httpServletRequest);
+    Context currentContext = Java8BytecodeBridge.currentContext();
+    if (currentContext != null && Java8BytecodeBridge.spanFromContext(currentContext).isRecording()) {
       // We are inside nested servlet/filter/app-server span, don't create new span
+      // TODO how is this possible, shouldn't we have found an attached context above in this case?
+
+      Context updatedContext = tracer().runOnceUnderAppServer(currentContext, httpServletRequest);
+      if (updatedContext != currentContext) {
+        // runOnceUnderAppServer added something to the context, need to re-scope
+        scope = attachedContext.makeCurrent();
+      }
       return;
     }
 

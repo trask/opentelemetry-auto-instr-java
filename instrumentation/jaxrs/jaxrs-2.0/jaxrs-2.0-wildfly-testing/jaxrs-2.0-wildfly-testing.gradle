@@ -29,26 +29,7 @@ task setupServer(type: Copy) {
   into file('build/server/')
 }
 
-// logback-classic contains /META-INF/services/javax.servlet.ServletContainerInitializer
-// that breaks deploy on embedded wildfly
-// create a copy of logback-classic jar that does not have this file
-task modifyLogbackJar(type: Jar) {
-  doFirst {
-    configurations.configureEach {
-      if (it.name.toLowerCase().endsWith('testruntimeclasspath')) {
-        def logbackJar = it.find { it.name.contains('logback-classic') }
-        from zipTree(logbackJar)
-        exclude(
-          "/META-INF/services/javax.servlet.ServletContainerInitializer"
-        )
-        destinationDirectory = file("$buildDir/tmp")
-        archiveFileName = "logback-classic-modified.jar"
-      }
-    }
-  }
-}
-
-test.dependsOn modifyLogbackJar, setupServer
+test.dependsOn setupServer
 
 test {
   doFirst {
@@ -58,12 +39,5 @@ test {
     jvmArgs "--add-modules=java.se"
     // add offset to default port values
     jvmArgs "-Djboss.socket.binding.port-offset=100"
-
-    // remove logback-classic from classpath
-    classpath = classpath.filter {
-      return !it.absolutePath.contains("logback-classic")
-    }
-    // add modified copy of logback-classic to classpath
-    classpath += files("$buildDir/tmp/logback-classic-modified.jar")
   }
 }

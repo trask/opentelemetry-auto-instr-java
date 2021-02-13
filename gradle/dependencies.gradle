@@ -16,7 +16,6 @@ ext {
 
     spock             : "1.3-groovy-$spockGroovyVer",
     groovy            : groovyVer,
-    logback           : "1.2.3",
     bytebuddy         : "1.10.18", // Also explicitly specified in buildSrc
     scala             : "2.11.12",  // Last version to support Java 7 (2.12+ require Java 8+)
     kotlin            : "1.4.0",
@@ -86,7 +85,7 @@ ext {
     systemLambda                 : "com.github.stefanbirkner:system-lambda:${versions.systemLambda}",
     testcontainers               : "org.testcontainers:testcontainers:1.15.1",
     testLogging                  : [
-      dependencies.create(group: 'ch.qos.logback', name: 'logback-classic', version: versions.logback),
+      dependencies.create(group: 'org.slf4j', name: 'slf4j-simple', version: versions.slf4j),
       dependencies.create(group: 'org.slf4j', name: 'log4j-over-slf4j', version: versions.slf4j),
       dependencies.create(group: 'org.slf4j', name: 'jcl-over-slf4j', version: versions.slf4j),
       dependencies.create(group: 'org.slf4j', name: 'jul-to-slf4j', version: versions.slf4j),

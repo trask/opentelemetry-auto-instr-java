@@ -5,14 +5,11 @@
 
 package io.opentelemetry.instrumentation.testing;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.opentelemetry.javaagent.testing.common.AgentTestingExporterAccess;
 import io.opentelemetry.javaagent.testing.common.TestAgentListenerAccess;
 import io.opentelemetry.sdk.metrics.data.MetricData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
-import org.slf4j.LoggerFactory;
 
 /**
  * An implementation of {@link InstrumentationTestRunner} that delegates most of its calls to the
@@ -21,10 +18,6 @@ import org.slf4j.LoggerFactory;
  * agent classloader.
  */
 public final class AgentTestRunner implements InstrumentationTestRunner {
-  static {
-    ((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.WARN);
-    ((Logger) LoggerFactory.getLogger("io.opentelemetry")).setLevel(Level.DEBUG);
-  }
 
   private static final AgentTestRunner INSTANCE = new AgentTestRunner();
 

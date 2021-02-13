@@ -18,20 +18,10 @@ import org.slf4j.LoggerFactory;
  */
 public class OkHttpUtils {
 
-  private static final Logger CLIENT_LOGGER = LoggerFactory.getLogger("http-client");
-
-  static {
-    ((ch.qos.logback.classic.Logger) CLIENT_LOGGER).setLevel(ch.qos.logback.classic.Level.DEBUG);
-  }
+  private static final Logger CLIENT_LOGGER = LoggerFactory.getLogger(OkHttpUtils.class);
 
   private static final HttpLoggingInterceptor LOGGING_INTERCEPTOR =
-      new HttpLoggingInterceptor(
-          new HttpLoggingInterceptor.Logger() {
-            @Override
-            public void log(String message) {
-              CLIENT_LOGGER.debug(message);
-            }
-          });
+      new HttpLoggingInterceptor(CLIENT_LOGGER::debug);
 
   static {
     LOGGING_INTERCEPTOR.setLevel(Level.BASIC);
